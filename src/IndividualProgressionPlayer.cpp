@@ -674,9 +674,9 @@ public:
 
         if (!sIndividualProgression->enabled || !sIndividualProgression->fishingFix || sIndividualProgression->isExcludedFromProgression(player))
             return true;
-        if (chance < roll)
-            return false;
-        return true;
+        if (skill >= zone_skill)
+            return true;
+        return false;
     }
 
     void OnPlayerUpdateArea(Player* player, uint32 /*oldArea*/, uint32 newArea) override
