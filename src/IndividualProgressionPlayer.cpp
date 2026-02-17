@@ -667,7 +667,7 @@ public:
         }
     }
 
-    bool OnPlayerUpdateFishingSkill(Player* player, int32 /*skill*/, int32 /*zone_skill*/, int32 chance, int32 roll) override
+    bool OnPlayerUpdateFishingSkill(Player* player, int32 skill, int32 zone_skill, int32 chance, int32 roll) override
     {
         if (!player || !player->IsInWorld() || !chance || !roll)
             return false;
