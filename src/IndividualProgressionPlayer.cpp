@@ -657,17 +657,16 @@ public:
         }
     }
 
-    bool OnPlayerUpdateFishingSkill(Player* player, int32 /*skill*/, int32 /*zone_skill*/, int32 chance, int32 roll) override
+    bool OnPlayerUpdateFishingSkill(Player* player, int32 skill, int32 zone_skill, int32 chance, int32 roll) override
     {
         if (!player || !player->IsInWorld() || !chance || !roll)
             return false;
 
         if (!sIndividualProgression->enabled || !sIndividualProgression->fishingFix)
             return true;
-        if (chance < roll)
-            return false;
-
-        return true;
+        if (skill >= zone_skill)
+            return true;
+        return false;
     }
 
     void OnPlayerUpdateArea(Player* player, uint32 /*oldArea*/, uint32 newArea) override
