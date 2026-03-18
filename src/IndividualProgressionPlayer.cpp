@@ -26,15 +26,6 @@ public:
 
         if (!sIndividualProgression->isExcludedFromProgression(player))
         {
-            if (player->getClass() == CLASS_DEATH_KNIGHT && sIndividualProgression->deathKnightStartingProgression && !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(sIndividualProgression->deathKnightStartingProgression)))
-            {
-                sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(sIndividualProgression->deathKnightStartingProgression));
-            }
-            if (sIndividualProgression->startingProgression && !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(sIndividualProgression->startingProgression)))
-            {
-                sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(sIndividualProgression->startingProgression));
-            }
-
             sIndividualProgression->checkIPProgression(player);
             sIndividualProgression->UpdateProgressionQuests(player);
         }
@@ -49,16 +40,31 @@ public:
         {
             if (player->GetLevel() <= IP_LEVEL_VANILLA)
             {
-                sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(0));
+                sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(0));
             }
             else if ((player->GetLevel() > IP_LEVEL_VANILLA) && (player->GetLevel() <= IP_LEVEL_TBC))
             {
-                sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(8));
+                sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(8));
             }
-            else // (player->GetLevel() <= IP_LEVEL_WOTLK)
+            else
             {
-                sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(13));
+                sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(13));
             }
+        }
+
+        if ((player->getRace() == RACE_DRAENEI || player->getRace() == RACE_BLOODELF) && sIndividualProgression->tbcRacesStartingProgression && !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(sIndividualProgression->tbcRacesStartingProgression)))
+        {
+            sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(sIndividualProgression->tbcRacesStartingProgression));
+        }
+        
+        if (player->getClass() == CLASS_DEATH_KNIGHT && sIndividualProgression->deathKnightStartingProgression && !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(sIndividualProgression->deathKnightStartingProgression)))
+        {
+            sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(sIndividualProgression->deathKnightStartingProgression));
+        }
+
+        if (sIndividualProgression->startingProgression && !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(sIndividualProgression->startingProgression)))
+        {
+            sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(sIndividualProgression->startingProgression));
         }
 
         sIndividualProgression->CheckAdjustments(player);
@@ -91,7 +97,7 @@ public:
 
     void OnPlayerMapChanged(Player* player) override
     {
-        if (!player || !player->IsInWorld())
+        if (!sIndividualProgression->enabled || !player || !player->IsInWorld())
             return;
 
         if (!sIndividualProgression->isExcludedFromProgression(player))
@@ -99,14 +105,6 @@ public:
             sIndividualProgression->checkIPProgression(player);
             sIndividualProgression->UpdateProgressionQuests(player);
         }
-
-        sIndividualProgression->CheckAdjustments(player);
-    }
-
-    void OnPlayerLevelChanged(Player* player, uint8 /*oldLevel*/) override
-    {
-        if (!player || !player->IsInWorld())
-            return;
 
         sIndividualProgression->CheckAdjustments(player);
     }
@@ -184,7 +182,6 @@ public:
                     pet->GivePetXP(player->GetGroup() ? amount / 2 : amount);
 
                 amount = 0;
-
             }
         }
     }
@@ -193,6 +190,9 @@ public:
     {
         if (!player || !player->IsInWorld())
             return false;
+
+        if (!sIndividualProgression->enabled || player->IsGameMaster() || sIndividualProgression->isExcludedFromProgression(player))
+            return true;
 
         if ((player->GetQuestStatus(NAXX40_ATTUNEMENT_1) == QUEST_STATUS_REWARDED) || (player->GetQuestStatus(NAXX40_ATTUNEMENT_2) == QUEST_STATUS_REWARDED) || (player->GetQuestStatus(NAXX40_ATTUNEMENT_3) == QUEST_STATUS_REWARDED))
             return true;
@@ -228,8 +228,6 @@ public:
             {
                 if (player->GetLevel() != IP_LEVEL_WOTLK)
                     return false;
-                // if (!player->HasItemCount(ITEM_DRAKEFIRE_AMULET))
-                //     return false;
             }
         }
         if (mapid == MAP_ZUL_GURUB)
@@ -257,11 +255,21 @@ public:
         {
             if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC))
             {
-                // The player may be in the Azuremyst area which is on the outlands map - check the area ID
-                return IsTBCRaceStartingZone(mapid, x, y, z);
+                uint32 accountId = player->GetSession()->GetAccountId();
+                uint8 highestProgression = sIndividualProgression->GetAccountProgression(accountId);
+
+                if ((highestProgression < sIndividualProgression->tbcRacesProgressionLevel) && (player->getRace() != RACE_DRAENEI && player->getRace() != RACE_BLOODELF))
+                {
+                    ChatHandler(player->GetSession()).PSendSysMessage("Progression Level Required = |cff00ffff{}|r", sIndividualProgression->tbcRacesProgressionLevel);
+                    return false;
+                }
+                else
+                    return IsTBCRaceStartingZone(mapid, x, y, z);
             }
+            
             Map const *map = sMapMgr->FindMap(mapid, 0);
             uint32 zoneId = map->GetZoneId(0, x, y, z);
+            
             if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_4) && zoneId == AREA_ISLE_OF_QUEL_DANAS)
             {
                 ChatHandler(player->GetSession()).PSendSysMessage("Progression Level Required = |cff00ffff{}|r", PROGRESSION_TBC_TIER_4);
@@ -581,7 +589,6 @@ public:
         }
     }
 
-
     bool OnPlayerCanGroupAccept(Player* player, Group* group) override
     {
         if (!player || !player->IsInWorld() || !group)
@@ -589,28 +596,66 @@ public:
 
         Player* groupLeader = ObjectAccessor::FindPlayerByLowGUID(group->GetLeaderGUID().GetCounter());
         uint8 currentState = player->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
-        uint8 otherPlayerState = groupLeader->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
+        uint8 groupLeaderState = groupLeader->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
+
+        if (!sIndividualProgression->enabled)
+            return true;
 
         if (sIndividualProgression->isExcludedFromProgression(player))
         {
-            if (currentState != otherPlayerState)
+            if (sIndividualProgression->enforceGroupRules)
             {
-                sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(otherPlayerState));
+                if (groupLeaderState <= 7) // Group leader is in Vanilla
+                {
+                    if (player->GetLevel() <= 60) // invited excluded player is in Vanilla
+                    {
+                        sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(groupLeaderState));
+                        return true;
+                    }
+                    else
+                        return false;
+                }
+                else if (groupLeaderState > 7 && groupLeaderState < 13) // Group leader is in TBC
+                {
+                    if (player->GetLevel() > 60 && player->GetLevel() <= 70) // invited excluded player is in TBC
+                    {
+                        sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(groupLeaderState));
+                        return true;
+                    }
+                    else
+                        return false;
+                }
+                else // Group leader is in WotLK
+                {
+                    if (player->GetLevel() > 70) // invited excluded player is in WotLK
+                    {
+                        sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(groupLeaderState));
+                        return true;
+                    }
+                    else
+                        return false;
+                }
             }
-            return true;
-        }
+            else // not enforcing Group Rules
+            {
+                if (currentState != groupLeaderState)
+                    sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(groupLeaderState));
 
-        if (!sIndividualProgression->enabled || !sIndividualProgression->enforceGroupRules)
+                return true;
+            }
+        }
+        else // normal account
         {
-            return true;
+            if (sIndividualProgression->enforceGroupRules)
+                return (currentState == groupLeaderState);
+            else
+                return true;
         }
-
-        return (currentState == otherPlayerState);
     }
 
     void OnPlayerCreatureKill(Player* killer, Creature* killed) override
     {
-        if (!killed || !killer || !killer->IsInWorld())
+        if (!sIndividualProgression->enabled || !killed || !killer || !killer->IsInWorld())
             return;
 
         switch (killed->GetEntry())
@@ -747,52 +792,6 @@ public:
     }
 };
 
-
-class IndividualPlayerProgression_PetScript : public PetScript
-{
-private:
-    static void CheckAdjustments(Pet* pet)
-    {
-        if (!sIndividualProgression->enabled || !pet || !pet->GetOwner())
-            return;
-
-        if (!sIndividualProgression->hasPassedProgression(pet->GetOwner(), PROGRESSION_PRE_TBC))
-        {
-            float adjustmentApplyPercent = (pet->GetLevel() - 10.0f) / 50.0f;
-            float hpAdjustmentValue = -100.0f * (1.0f - sIndividualProgression->vanillaHealthAdjustment);
-            float hpAdjustment = pet->GetLevel() > 10 ? (hpAdjustmentValue * adjustmentApplyPercent) : 0;
-            AdjustStats(pet, hpAdjustment);
-        }
-        else if (sIndividualProgression->hasPassedProgression(pet->GetOwner(), PROGRESSION_PRE_TBC) && !sIndividualProgression->hasPassedProgression(pet->GetOwner(), PROGRESSION_TBC_TIER_5))
-        {
-            float hpAdjustmentValue = -100.0f * (1.0f - sIndividualProgression->tbcHealthAdjustment);
-            AdjustStats(pet, hpAdjustmentValue);
-        }
-    }
-
-    static void AdjustStats(Pet* pet, float hpAdjustment)
-    {
-        if (!sIndividualProgression->enabled || !pet || !pet->GetOwner())
-            return;
-
-        auto bp0 = static_cast<int32>(hpAdjustment);
-
-        pet->RemoveAura(HP_AURA_SPELL);
-        pet->CastCustomSpell(pet, HP_AURA_SPELL, &bp0, nullptr, nullptr, true);
-    }
-
-public:
-    IndividualPlayerProgression_PetScript() : PetScript("IndividualProgression_PetScript") { }
-
-    void OnPetAddToWorld(Pet* pet) override
-    {
-        if (!sIndividualProgression->enabled || !pet || !pet->GetOwner())
-            return;
-
-        CheckAdjustments(pet);
-    }
-};
-
 class IndividualPlayerProgression_UnitScript : public UnitScript
 {
 public:
@@ -896,7 +895,6 @@ void AddSC_mod_individual_progression_player()
 {
     new IndividualPlayerProgression();
     new IndividualPlayerProgression_GroupScript();
-    new IndividualPlayerProgression_PetScript();
     new IndividualPlayerProgression_AccountScript();
     new IndividualPlayerProgression_UnitScript();
 }
