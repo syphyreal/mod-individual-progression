@@ -1,13 +1,13 @@
 /* Restore Aquatic Form as a reward for Aquatic Form quests */
 UPDATE `quest_template` SET `RewardSpell` = 1446 WHERE `ID` IN (31, 5061);
 
----- Remove starting dual wield skill for rogues
---DELETE FROM `playercreateinfo_skills` WHERE `skill` = 118;
---INSERT INTO `playercreateinfo_skills` (`raceMask`, `classMask`, `skill`, `rank`, `comment`) VALUES (0, 32, 118, 0, 'Dual Wield');
+-- -- Remove starting dual wield skill for rogues
+-- DELETE FROM `playercreateinfo_skills` WHERE `skill` = 118;
+-- INSERT INTO `playercreateinfo_skills` (`raceMask`, `classMask`, `skill`, `rank`, `comment`) VALUES (0, 32, 118, 0, 'Dual Wield');
 
----- add dual wield to trainers at level 10 for rogues (even though this is already done in AC's trainer_spell.sql, which I think is a mistake)
---DELETE FROM `trainer_spell` WHERE `TrainerId` = 9 AND `SpellID` = 674;
---INSERT INTO `trainer_spell` (`TrainerId`, `SpellId`, `MoneyCost`, `ReqSkillLine`, `ReqSkillRank`, `ReqLevel`, `VerifiedBuild`) VALUES (9, 674, 300, 0, 0, 10, 0);
+-- -- add dual wield to trainers at level 10 for rogues (even though this is already done in AC's trainer_spell.sql, which I think is a mistake)
+-- DELETE FROM `trainer_spell` WHERE `TrainerId` = 9 AND `SpellID` = 674;
+-- INSERT INTO `trainer_spell` (`TrainerId`, `SpellId`, `MoneyCost`, `ReqSkillLine`, `ReqSkillRank`, `ReqLevel`, `VerifiedBuild`) VALUES (9, 674, 300, 0, 0, 10, 0);
 
 -- fix Mai'ah <Mage Trainer> in Valley of Trials.
 UPDATE `creature_default_trainer` SET `TrainerId` = 17 WHERE `CreatureId` = 5884;
