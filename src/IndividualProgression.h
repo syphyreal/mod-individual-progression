@@ -140,6 +140,7 @@ enum ProgressionAchievements
 enum ProgressionAreas
 {
     AREA_THE_DARK_PORTAL                 = 72,
+    AREA_RUINS_OF_LORDAERON_B            = 153,
     AREA_DREADMAUL_ROCK                  = 249,
     AREA_RUINS_OF_THAURISSAN             = 250,
     AREA_BLACKROCK_MOUNTAIN              = 254,
@@ -205,7 +206,7 @@ enum ProgressionState : uint8         // Progression stands for what has been co
     PROGRESSION_MOLTEN_CORE     = 1,  // BWL available
     PROGRESSION_ONYXIA          = 2,
     PROGRESSION_BLACKWING_LAIR  = 3,  // ZG, AQ War effort, AQ quest line
-    PROGRESSION_PRE_AQ          = 4,  // AQ gates open, raids available, AQ outdoors war 
+    PROGRESSION_PRE_AQ          = 4,  // AQ gates open, raids available, AQ outdoors war
     PROGRESSION_AQ_WAR          = 5,  // AQ gates open, raids, Field Duty quests and all Cenarion Hold npcs available
     PROGRESSION_AQ              = 6,  // Naxx40 and Scourge Invasion
     PROGRESSION_NAXX40          = 7,  // Into the Breach
@@ -380,7 +381,7 @@ public:
     std::map<uint32, uint8> customProgressionMap;
     questXpMapType questXpMap;
     float vanillaPowerAdjustment, tbcPowerAdjustment, vanillaHealingAdjustment, tbcHealingAdjustment;
-    bool enabled, questXpFix, enforceGroupRules, fishingFix, simpleConfigOverride, questMoneyAtLevelCap, repeatableVanillaQuestsXp, disableDefaultProgression, earlyDungeonSet2, requireNaxxStrath, doableNaxx40Bosses, DisableRDF, excludeAccounts, VanillaPvpTitlesKeepPostVanilla, VanillaPvpTitlesEarnPostVanilla, ExcludedAccountsEarnPvPTitles;
+    bool enabled, questXpFix, enforceGroupRules, fishingFix, simpleConfigOverride, questMoneyAtLevelCap, repeatableVanillaQuestsXp, disableDefaultProgression, earlyDungeonSet2, earlyScourgeBosses, requireNaxxStrath, doableNaxx40Bosses, DisableRDF, excludeAccounts, VanillaPvpTitlesKeepPostVanilla, VanillaPvpTitlesEarnPostVanilla, ExcludedAccountsEarnPvPTitles;
     int progressionLimit, startingProgression, tbcRacesProgressionLevel, tbcRacesStartingProgression, deathKnightProgressionLevel, deathKnightStartingProgression, RequiredZulGurubProgression, tbcArenaSeason, wotlkArenaSeason, ExcludedAccountsMaxLevel;
     uint32 VanillaPvpKillRank1, VanillaPvpKillRank2, VanillaPvpKillRank3, VanillaPvpKillRank4, VanillaPvpKillRank5, VanillaPvpKillRank6, VanillaPvpKillRank7, VanillaPvpKillRank8, VanillaPvpKillRank9, VanillaPvpKillRank10, VanillaPvpKillRank11, VanillaPvpKillRank12, VanillaPvpKillRank13, VanillaPvpKillRank14;
     std::string excludedAccountsRegex;
@@ -395,7 +396,7 @@ public:
     void SyncBotsProgressionToLeader(Group* group);
     bool isAttuned(Player* player);
     void checkIPPhasing(Player* player, uint32 newArea);
-    void checkIPProgression(Player* player);	
+    void checkIPProgression(Player* player);
     void UpdateProgressionQuests(Player* player);
     void UpdateProgressionAchievements(Player* player, uint16 achievementID);
     void checkKillProgression(Player* player, Creature* killed);

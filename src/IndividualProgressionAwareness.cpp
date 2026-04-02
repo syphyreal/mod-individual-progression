@@ -42,9 +42,9 @@ public:
         {
             if (player->IsGameMaster())
                 return true;
-            
+
             Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
-            
+
             if (sIndividualProgression->hasPassedProgression(target, PROGRESSION_PRE_AQ) && !sIndividualProgression->hasPassedProgression(target, PROGRESSION_AQ_WAR))
                 return true;
             else
@@ -71,9 +71,9 @@ public:
         {
             if (player->IsGameMaster())
                 return true;
-            
+
             Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
-            
+
             if (sIndividualProgression->hasPassedProgression(target, PROGRESSION_AQ) && !sIndividualProgression->hasPassedProgression(target, PROGRESSION_NAXX40))
                 return true;
             else
@@ -102,7 +102,7 @@ public:
                 return true;
 
             Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
-            
+
             if (sIndividualProgression->hasPassedProgression(target, PROGRESSION_AQ))
                 return true;
             else
@@ -269,9 +269,9 @@ public:
         {
             if (player->IsGameMaster())
                 return true;
-			
+
             Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
-			
+
             if (sIndividualProgression->hasPassedProgression(target, PROGRESSION_BLACKWING_LAIR) && !sIndividualProgression->hasPassedProgression(target, PROGRESSION_PRE_AQ))
                 return true;
             else
@@ -326,9 +326,9 @@ public:
         {
             if (player->IsGameMaster())
                 return true;
-            
+
             Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
-            
+
             if (sIndividualProgression->hasPassedProgression(target, PROGRESSION_BLACKWING_LAIR) && !sIndividualProgression->hasPassedProgression(target, PROGRESSION_AQ_WAR))
                 return true;
             else
@@ -355,9 +355,9 @@ public:
         {
             if (player->IsGameMaster())
                 return true;
-            
+
             Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
-            
+
             if (sIndividualProgression->hasPassedProgression(target, PROGRESSION_PRE_AQ) && !sIndividualProgression->hasPassedProgression(target, PROGRESSION_AQ_WAR))
                 return true;
             else
@@ -384,9 +384,9 @@ public:
         {
             if (player->IsGameMaster())
                 return true;
-			
+
             Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
-			
+
             if (sIndividualProgression->hasPassedProgression(target, PROGRESSION_AQ) && !sIndividualProgression->hasPassedProgression(target, PROGRESSION_NAXX40))
                 return true;
             else
@@ -469,8 +469,8 @@ public:
         {
             if (player->IsGameMaster() || !sIndividualProgression->enabled)
                 return true;
-            
-            Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());            
+
+            Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
             if (sIndividualProgression->isBeforeProgression(target,PROGRESSION_PRE_TBC))
                 return true;
             else
@@ -509,6 +509,34 @@ public:
     CreatureAI* GetAI(Creature* creature) const override
     {
         return new npc_ipp_tbcAI(creature);
+    }
+};
+
+class npc_ipp_tbc_t3 : public CreatureScript
+{
+public:
+    npc_ipp_tbc_t3() : CreatureScript("npc_ipp_tbc_t3") { }
+
+    struct npc_ipp_tbc_t3AI: ScriptedAI
+    {
+        explicit npc_ipp_tbc_t3AI(Creature* creature) : ScriptedAI(creature) { };
+
+        bool CanBeSeen(Player const* player) override
+        {
+            if (player->IsGameMaster() || !sIndividualProgression->enabled)
+                return true;
+
+            Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
+            if (sIndividualProgression->hasPassedProgression(target, PROGRESSION_TBC_TIER_2))
+                return true;
+            else
+                return false;
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_ipp_tbc_t3AI(creature);
     }
 };
 
@@ -749,7 +777,7 @@ void AddSC_mod_individual_progression_awareness()
     new gobject_ipp_wotlk();
     new npc_ipp_preaq();              // Cenarion Hold NPCs
     new npc_ipp_we();                 // War Effort NPCs in cities
-	new npc_ipp_aq();
+    new npc_ipp_aq();
     new npc_ipp_aqwewar();            // only visible during AQ war effort and AQ war
     new npc_ipp_aqwar();              // only visible during AQ war
     new npc_ipp_si();                 // Scourge Invasion
@@ -757,6 +785,7 @@ void AddSC_mod_individual_progression_awareness()
     new npc_ipp_naxx40();
     new npc_ipp_pre_tbc();            // Vanilla pvp vendors
     new npc_ipp_tbc();
+    new npc_ipp_tbc_t3();
     new npc_ipp_tbc_pre_t4();
     new npc_ipp_tbc_t4();
     new npc_ipp_pre_wotlk();
