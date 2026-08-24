@@ -9,8 +9,8 @@ UPDATE `creature_template` SET `unit_class` = 8 WHERE `entry` IN (29273);
 DELETE FROM `creature_addon` WHERE `guid` IN (133917, 133918, 133919, 133920, 133925);
 
 -- battlemasters
-DELETE FROM `game_event_creature` WHERE `guid` IN (207918, 207929, 207951, 208042, 208081, 208107, 208146, 208159, 208185); -- alliance
-DELETE FROM `game_event_creature` WHERE `guid` IN (208207, 208240, 208251, 208355, 208368, 208394, 208407); -- horde
+DELETE FROM `game_event_creature` WHERE `guid` IN (207918, 207929, 207951, 208042, 208081, 208107, 208146, 208159, 208185, 208511, 208512); -- alliance
+DELETE FROM `game_event_creature` WHERE `guid` IN (208207, 208240, 208251, 208355, 208368, 208394, 208407, 208509, 208510); -- horde
 
 -- remove AzerothCore area triggers used by WotLK Scourge Invasion Event
 DELETE FROM `areatrigger_involvedrelation` WHERE `id` IN (4092, 4094, 4095, 4096, 4098, 4099, 4100, 4101, 4103, 4104, 4105, 5151, 5152, 5153, 5154, 5158, 5159, 5160, 5161);
@@ -21,43 +21,55 @@ DELETE FROM `game_event_creature` WHERE `guid` IN
 (17676, 88155, 88156, 88158, 88159, 88160, 91798, 152022, 152023, 152026, 152027, 152028, 152029, 152030, 152031, 202335, 202336, 
 208486, 208487, 208488, 208489, 208491, 208492, 208494, 208496, 208498, 208499, 208500, 208501, 208503, 208504, 208506, 208508);
 
-DELETE FROM `creature`   WHERE `id1`   IN (32405, 32832, 32834);
+DELETE FROM `creature`   WHERE `id`   IN (32405, 32832, 32834);
 DELETE FROM `npc_vendor` WHERE `entry` IN (32405, 32832, 32834);
-DELETE FROM `creature` WHERE `guid` = 88156 AND `id1` IN (20278); -- Vixton Pinchwhistle
+DELETE FROM `creature` WHERE `guid` = 88156 AND `id` IN (20278); -- Vixton Pinchwhistle
 
 
 /* the following edits are temporary */
 
--- no longer hide npc, now hiding vendor items instead
-UPDATE `creature_template` SET `ScriptName` = '' WHERE `entry` IN 
-(28701,  -- Timothy Jones <Grand Master Jewelcrafting Trainer>
- 32172); -- Harold Winston <Jewelry Vendor>
+-- remove pvp progression requirements to show pvp gear. added rank requirements back
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 23 AND `ConditionTypeOrReference` = 8 AND `Comment` = "Vanilla PvP Ranked Gear (IPP)";
 
--- remove unused riding spell list
-DELETE FROM `trainer_spell` WHERE `TrainerId` = 648;
+-- remove vanilla AV landmines, default is no landmines
+SET @OGUID := 657000;
+DELETE FROM `gameobject` WHERE `guid` BETWEEN @OGUID+101 AND @OGUID+499;
 
--- remove access requirements from database, this is now done with cpp
-DELETE FROM `dungeon_access_requirements` WHERE `dungeon_access_id` IN (15, 16, 32, 46, 47, 64);
-
--- Make Spice Bread learnable for completion's sake, but only after reaching a level when it will no longer allow skipping early cooking
--- no longer needed. you can't get Simple Flour during vanilla.
-UPDATE `trainer_spell` SET `ReqSkillRank` = 1 WHERE `SpellID` = 37836;
-
--- undo Replace orc guards with pre-wrathgate abomination guards -- 00_cleanup
-UPDATE `creature` SET `id1` = 36213, `equipment_id` = 1 WHERE `guid` IN 
-(17669, 28481, 28485, 28486, 28487, 28488, 28489, 28490, 33823, 33831, 34102, 34103, 34104, 34105, 34106, 38296, 38297, 38298, 38299, 38301, 38302, 38305, 
-39019, 39020, 39022, 39023, 39024, 39025, 39026, 41884, 41887, 41888, 41889, 41890, 41891, 41892, 41956, 41960, 41961, 41964, 79264, 79265, 79266, 79267);
-UPDATE `creature` SET `equipment_id` = 0 WHERE `guid` IN (34103, 34104, 38297);
-
--- Restore conversation between Faranell and Wrathgate NPC Kraggosh - 00_cleanup
-UPDATE `creature_template` SET `AINAME` = 'SmartAI' WHERE `entry` = 2055;
-
--- restore AC entries that were wrongly overwritten by AQ war bosses
-DELETE FROM `pool_template` WHERE `entry` IN (15813, 15818);
-INSERT INTO `pool_template` (`entry`, `max_limit`, `description`) VALUES
-(15813,1,'Thousand Needles - Ore Pool - Iron Deposit / Silver Vein / Gold Vein'),
-(15818,1,'Thousand Needles - Ore Pool - Iron Deposit / Silver Vein / Gold Vein');
-
--- undo phasing
-UPDATE `creature_template` SET `ScriptName` = '' WHERE `entry` IN (15599, 18594, 19227, 25167, 27666, 27667);
-
+-- undo changes made to wotlk naxx creatures - 00_cleanup.sql
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -420 WHERE `entry` IN (16168, 16446);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -417 WHERE `entry` IN (16243);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -416 WHERE `entry` IN (15976, 15978, 15979);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -415 WHERE `entry` IN (16573);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -414 WHERE `entry` IN (15980, 15981, 16506);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -413 WHERE `entry` IN (15974, 15975, 16505);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -412 WHERE `entry` IN (16126);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -411 WHERE `entry` IN (16441);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -410 WHERE `entry` IN (15928, 15929, 15930, 15931, 15932, 15936, 15952, 15953, 15954, 15956, 15989, 15990, 16011, 16060, 16061, 16063, 16064, 16065);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -406 WHERE `entry` IN (16062);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -405 WHERE `entry` IN (16017, 16018, 16029);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -404 WHERE `entry` IN (16194, 16215, 16216);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -403 WHERE `entry` IN (16021, 16165, 16368);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -402 WHERE `entry` IN (16428, 16429);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -401 WHERE `entry` IN (16034);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -399 WHERE `entry` IN (16037);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -398 WHERE `entry` IN (16036, 16056, 16057, 16236, 16297, 16698, 17055);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -397 WHERE `entry` IN (16984);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -396 WHERE `entry` IN (16447);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -395 WHERE `entry` IN (16290);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -394 WHERE `entry` IN (16375);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -393 WHERE `entry` IN (16024);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -392 WHERE `entry` IN (16020);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -391 WHERE `entry` IN (16167);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -390 WHERE `entry` IN (16164);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -389 WHERE `entry` IN (16022, 16981);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -388 WHERE `entry` IN (16150);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -387 WHERE `entry` IN (16244, 16360, 16427, 16983);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -385 WHERE `entry` IN (16156);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -384 WHERE `entry` IN (16149);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -383 WHERE `entry` IN (16124);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -382 WHERE `entry` IN (16127);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -375 WHERE `entry` IN (30183, 16486);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -303 WHERE `entry` IN (16193);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -286 WHERE `entry` IN (16028);
+UPDATE `creature_template` SET `CreatureImmunitiesId` = -93  WHERE `entry` IN (23561, 23562, 23563, 25463, 25465, 28357, 28658, 28890, 28919, 29112, 29113, 31099);
+UPDATE `creature_template` SET `CreatureImmunitiesId` =  0   WHERE `entry` IN (16082, 16137, 16286, 16363, 16385, 16400, 16419, 20350, 20423, 23876, 28619);

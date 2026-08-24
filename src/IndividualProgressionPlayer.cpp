@@ -1,5 +1,6 @@
 #include "IndividualProgression.h"
 #include "naxxramas_40.h"
+#include "Spell.h"
 
 class IndividualPlayerProgression : public PlayerScript
 {
@@ -24,47 +25,36 @@ public:
         if (!player || !player->IsInWorld())
             return;
 
-        if (!sIndividualProgression->isExcludedFromProgression(player))
+        if (!sIndividualProgression->isNormalAccount(player)) // bot or exluded account
         {
-            sIndividualProgression->checkIPProgression(player);
-            sIndividualProgression->UpdateProgressionQuests(player);
-        }
-
-        if (sIndividualProgression->ExcludedAccountsEarnPvPTitles || !sIndividualProgression->isExcludedFromProgression(player))
-        {
-            sIndividualProgression->AwardEarnedVanillaPvpTitles(player);
-            sIndividualProgression->CleanUpVanillaPvpTitles(player);
-        }
-
-		if (sIndividualProgression->isExcludedFromProgression(player) && sIndividualProgression->excludeAccounts)
-        {
-            if (player->GetLevel() <= IP_LEVEL_VANILLA)
-            {
+            if (sIndividualProgression->isBotAccount(player))
+                sIndividualProgression->UpdateRNDbotSpells(player); // give class spells to RNDbots that have been removed from trainers by IP.
+            
+            if (player->GetLevel() <= 60)
                 sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(0));
-            }
-            else if ((player->GetLevel() > IP_LEVEL_VANILLA) && (player->GetLevel() <= IP_LEVEL_TBC))
-            {
+            else if ((player->GetLevel() > 60) && (player->GetLevel() <= 70))
                 sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(8));
-            }
             else
-            {
                 sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(13));
+        }
+        else // normal account
+        {
+            if ((player->getRace() == RACE_DRAENEI || player->getRace() == RACE_BLOODELF) && sIndividualProgression->tbcRacesStartingProgression && !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(sIndividualProgression->tbcRacesStartingProgression)))
+            {
+                sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(sIndividualProgression->tbcRacesStartingProgression));
             }
-        }
 
-        if ((player->getRace() == RACE_DRAENEI || player->getRace() == RACE_BLOODELF) && sIndividualProgression->tbcRacesStartingProgression && !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(sIndividualProgression->tbcRacesStartingProgression)))
-        {
-            sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(sIndividualProgression->tbcRacesStartingProgression));
-        }
+            if (player->getClass() == CLASS_DEATH_KNIGHT && sIndividualProgression->deathKnightStartingProgression && !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(sIndividualProgression->deathKnightStartingProgression)))
+            {
+                sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(sIndividualProgression->deathKnightStartingProgression));
+            }
 
-        if (player->getClass() == CLASS_DEATH_KNIGHT && sIndividualProgression->deathKnightStartingProgression && !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(sIndividualProgression->deathKnightStartingProgression)))
-        {
-            sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(sIndividualProgression->deathKnightStartingProgression));
-        }
+            if (sIndividualProgression->startingProgression && !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(sIndividualProgression->startingProgression)))
+            {
+                sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(sIndividualProgression->startingProgression));
+            }
 
-        if (sIndividualProgression->startingProgression && !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(sIndividualProgression->startingProgression)))
-        {
-            sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(sIndividualProgression->startingProgression));
+            sIndividualProgression->checkIPProgression(player);
         }
 
         sIndividualProgression->CheckAdjustments(player);
@@ -78,46 +68,25 @@ public:
         }
     }
 
-    void OnPlayerSetMaxLevel(Player* player, uint32& maxPlayerLevel) override
-    {
-        if (!sIndividualProgression->enabled || !maxPlayerLevel || !player || !player->IsInWorld() || sIndividualProgression->isExcludedFromProgression(player))
-            return;
-
-        if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC))
-        {
-            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) > IP_LEVEL_VANILLA)
-                maxPlayerLevel = IP_LEVEL_VANILLA;
-        }
-        else if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5))
-        {
-            if (sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) > IP_LEVEL_TBC)
-                maxPlayerLevel = IP_LEVEL_TBC;
-        }
-    }
-
-    void OnPlayerMapChanged(Player* player) override
-    {
-        if (!sIndividualProgression->enabled || !player || !player->IsInWorld())
-            return;
-
-        if (!sIndividualProgression->isExcludedFromProgression(player))
-        {
-            sIndividualProgression->checkIPProgression(player);
-            sIndividualProgression->UpdateProgressionQuests(player);
-        }
-
-        sIndividualProgression->CheckAdjustments(player);
-    }
-
     void OnPlayerEquip(Player* player, Item* /*it*/, uint8 /*bag*/, uint8 /*slot*/, bool /*update*/) override
     {
         if (!player || !player->IsInWorld())
             return;
 
+        // exluded accounts should be effected by server nerfs as well
         sIndividualProgression->CheckAdjustments(player);
     }
 
-    void OnPlayerResurrect(Player* player, float /*restore_percent*/, bool /*applySickness*/) override
+    void OnPlayerLevelChanged(Player* player, uint8 /*oldLevel*/) override
+    {
+        if (!player || !player->IsInWorld())
+            return;
+
+        if (sIndividualProgression->isBotAccount(player))
+            sIndividualProgression->UpdateRNDbotSpells(player);
+    }
+
+    void OnPlayerResurrect(Player* player, float /*restore_percent*/, bool& /*applySickness*/) override
     {
         if (!player || !player->IsInWorld())
             return;
@@ -149,9 +118,12 @@ public:
         if (!sIndividualProgression->enabled || !player || !player->IsInWorld() || !amount)
             return;
 
-        if (sIndividualProgression->isExcludedFromProgression(player))
+        if (sIndividualProgression->isExcludedAccount(player))
+            return;
+
+        if (sIndividualProgression->isBotAccount(player))
         {
-            if (player->GetLevel() >= sIndividualProgression->ExcludedAccountsMaxLevel)
+            if (player->GetLevel() >= sIndividualProgression->BotAccountsMaxLevel)
             {
                 // Still award XP to pets - they won't be able to pass the player's level
                 Pet* pet = player->GetPet();
@@ -161,10 +133,10 @@ public:
                 amount = 0;
             }
         }
-        else
+        else // normal account
         {
             // Player is still in Vanilla content - do not give XP past level 60
-            if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC) && player->GetLevel() >= IP_LEVEL_VANILLA)
+            if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC) && player->GetLevel() >= 60)
             {
                 // Still award XP to pets - they won't be able to pass the player's level
                 Pet* pet = player->GetPet();
@@ -174,7 +146,7 @@ public:
                 amount = 0;
             }
             // Player is in TBC content - do not give XP past level 70
-            else if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5) && player->GetLevel() >= IP_LEVEL_TBC)
+            else if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5) && player->GetLevel() >= 70)
             {
                 // Still award XP to pets - they won't be able to pass the player's level
                 Pet* pet = player->GetPet();
@@ -186,18 +158,425 @@ public:
         }
     }
 
-    static bool isAttuned(Player* player)
+    void OnPlayerSpellCast(Player* player, Spell* spell, bool /*skipCheck*/) override
     {
-        if (!player || !player->IsInWorld())
-            return false;
+        if (!sIndividualProgression->enabled || !player || !player->IsInWorld() || !spell)
+            return;
 
-        if (!sIndividualProgression->enabled || player->IsGameMaster() || sIndividualProgression->isExcludedFromProgression(player))
-            return true;
+        if (sIndividualProgression->isBotAccount(player)) // bots don't cast lower ranks of spells
+            return;
 
-        if ((player->GetQuestStatus(NAXX40_ATTUNEMENT_1) == QUEST_STATUS_REWARDED) || (player->GetQuestStatus(NAXX40_ATTUNEMENT_2) == QUEST_STATUS_REWARDED) || (player->GetQuestStatus(NAXX40_ATTUNEMENT_3) == QUEST_STATUS_REWARDED))
-            return true;
-        else
-            return false;
+        if (sIndividualProgression->EnableAllSpellRanks)
+            return;
+        
+        if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5) || player->GetLevel() < 70) // no need to check spells if player is not in WotlK
+            return;
+
+        if (player->getClass() == CLASS_WARRIOR || player->getClass() == CLASS_ROGUE || player->getClass() == CLASS_DEATH_KNIGHT)
+            return;
+
+        if (player->getClass() == CLASS_DRUID)
+        {
+            if (spell->GetSpellInfo()->SchoolMask == 8) // Nature
+            {
+                static constexpr std::array<uint16, 62> Druid_SM_8 =
+                {
+                    5185, 5186, 5187, 5188, 5189, 6778, 8903, 9758, 9888, 9889, 25297, 26978, // Healing Touch ranks 1-12
+                    774, 1058, 1430, 2090, 2091, 3627, 8910, 9839, 9840, 9841, 25299, 26981, // Rejuvenation ranks 1-12
+                    8936, 8938, 8939, 8940, 8941, 9750, 9856, 9857, 9858, // Regrowth ranks 1-9
+                    5176, 5177, 5178, 5179, 5180, 6780, 8905, 9912, 26984, // Wrath ranks 1-9
+                    339, 1062, 5195, 5196, 9852, 9853, // Entangling Roots 1-6
+                    5570, 24974, 24975, 24976, 24977, // Insect Swarm ranks 1-5
+                    740, 8918, 9862, 9863, // Tranquility ranks 1-4
+                    2908, 8955, 9901, // Soothe Animal ranks 1-3
+                    2637, 18657 // Hibernate ranks 1-2
+                };
+
+                for (uint16 spellId : Druid_SM_8)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+
+            if (spell->GetSpellInfo()->SchoolMask == 64) // Arcane
+            {
+                static constexpr std::array<uint16, 21> Druid_SM_64 =
+                {
+                    8921, 8924, 8925, 8926, 8927, 8928, 8929, 9833, 9834, 9835, 26987, // Moonfire ranks 1-11
+                    2912, 8949, 8950, 8951, 9875, 9876, 25298, // Starfire ranks 1-7
+                    16914, 17401, 17402 // Hurricane ranks 1-3
+                };
+
+                for (uint16 spellId : Druid_SM_64)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (player->getClass() == CLASS_HUNTER)
+        {
+            if (spell->GetSpellInfo()->SchoolMask == 1 || spell->GetSpellInfo()->SchoolMask == 4)  // Physical + Fire
+            {
+                static constexpr std::array<uint16, 34> Hunter_SM_1_4 =
+                {
+                    19434, 20900, 20901, 20902, 20903, 20904, // Aimed Shot ranks 1-6
+                    19306, 20909, 20910, // Counterattack ranks 1-3
+                    13813, 14316, 14317, // Explosive Trap ranks 1-3
+                    13795, 14302, 14303, 14304, 14305, // Immolation Trap ranks 1-5
+                    1495, 14269, 14270, 14271, // Mongoose Bite ranks 1-4
+                    2643, 14288, 14289, 14290, 25294, // Multi-Shot ranks 1-5
+                    2973, 14260, 14261, 14262, 14263, 14264, 14265, 14266 // Raptor Strike ranks 1-8
+                };
+
+                for (uint16 spellId : Hunter_SM_1_4)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+
+            if (spell->GetSpellInfo()->SchoolMask == 8 || spell->GetSpellInfo()->SchoolMask == 16 || spell->GetSpellInfo()->SchoolMask == 64)  // Nature + Frost + Arcane
+            {
+                static constexpr std::array<uint16, 37> Hunter_SM_8_16_64 =
+                {
+                    1978, 13549, 13550, 13551, 13552, 13553, 13554, 13555, 25295, // Serpent Sting ranks 1-9
+                    3044, 14281, 14282, 14283, 14284, 14285, 14286, 14287, // Arcane Shot ranks 1-8
+                    136, 3111, 3661, 3662, 13542, 13543, 13544, // Mend Pet ranks 1-7
+                    1130, 14323, 14324, // Hunter's Mark ranks 1-3
+                    1510, 14294, 14295, // Volley ranks 1-3
+                    19386, 24132, 24133, // Wyvern Sting ranks 1-3
+                    1499, 14310, // Freezing Trap ranks 1-2
+                    1513, 14326 // Scare Beast ranks 1-2
+                };
+
+                for (uint16 spellId : Hunter_SM_8_16_64)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+        }
+
+        else if (player->getClass() == CLASS_MAGE)
+        {
+            if (spell->GetSpellInfo()->SchoolMask == 4)  // Fire
+            {
+                static constexpr std::array<uint16, 55> Mage_SM_4 =
+                {
+                    11113, 13018, 13019, 13020, 13021, 27133, // Blast Wave ranks 1-6
+                    2136, 2137, 2138, 8412, 8413, 10197, 10199, 27078, // Fire Blast ranks 1-8
+                    543, 8457, 8458, 10223, 10225, // Fire Ward ranks 1-5
+                    133, 143, 145, 3140, 8400, 8401, 8402, 10148, 10149, 10150, 10151, 25306, 27070, // Fireball ranks 1-13
+                    2120, 2121, 8422, 8423, 10215, 10216, // Flamestrike ranks 1-6
+                    11366, 12505, 12522, 12523, 12524, 12525, 12526, 18809, 27132, // Pyroblast ranks 1-9
+                    2948, 8444, 8445, 8446, 10205, 10206, 10207, 27073 // Scorch ranks 1-8
+                };
+
+                for (uint16 spellId : Mage_SM_4)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        // ChatHandler(player->GetSession()).PSendSysMessage("spell = {}", spellId);
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+
+            if (spell->GetSpellInfo()->SchoolMask == 16) // Frost
+            {
+                static constexpr std::array<uint16, 42> Mage_SM_16 =
+                {
+                    10, 6141, 8427, 10185, 10186, 10187, // Blizzard ranks 1-6
+                    120, 8492, 10159, 10160, 10161, // Cone of Cold ranks 1-5
+                    122, 865, 6131, 10230, // Frost Nova ranks 1-4
+                    6143, 8461, 8462, 10177, 28609, // Frost Ward ranks 1-5
+                    116, 205, 837, 7322, 8406, 8407, 8408, 10179, 10180, 10181, 25304, 27071, 27072,  // Frostbolt ranks 1-13
+                    7302, 7320, 10219, 10220, // Ice Armor ranks 1-4
+                    11426, 13031, 13032, 13033, 27134 // Ice Barrier ranks 1-5
+                };
+
+                for (uint16 spellId : Mage_SM_16)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        // ChatHandler(player->GetSession()).PSendSysMessage("spell = {}", spellId);
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+
+            if (spell->GetSpellInfo()->SchoolMask == 64) // Arcane
+            {
+                static constexpr std::array<uint16, 43> Mage_SM_64 =
+                {
+                    1008, 8455, 10169, 10170, 27130, // Amplify Magic ranks 1-5
+                    1449, 8437, 8438, 8439, 10201, 10202, 27080, // Arcane Explosion ranks 1-7
+                    5143, 5144, 5145, 8416, 8417, 10211, 10212, 25345, 27075, 38699, // Arcane Missiles ranks 1-10
+                    759, 3552, 10053, 10054, // Conjure Mana Gem ranks 1-4
+                    604, 8450, 8451, 10173, 10174,  // Dampen Magic ranks 1-5
+                    6117, 22782, 22783, // Mage Armor ranks 1-3
+                    1463, 8494, 8495, 10191, 10192, 10193, // Mana Shield ranks 1-6
+                    118, 12824, 12825, // Polymorph ranks 1-3
+                };
+
+                for (uint16 spellId : Mage_SM_64)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        // ChatHandler(player->GetSession()).PSendSysMessage("spell = {}", spellId);
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+        }
+
+        else if (player->getClass() == CLASS_PALADIN)
+        {
+            if (spell->GetSpellInfo()->SchoolMask == 2) // Holy
+            {
+                static constexpr std::array<uint16, 44> Paladin_SM_2 =
+                {
+                    635, 639, 347, 1026, 1042, 3472, 10328, 10329, 25292, 27135, // Holy Light ranks 1-10
+                    19750, 19939, 19940, 19941, 19942, 19943, // Flash of Light ranks 1-6
+                    879, 5614, 5615, 10312, 10313, 10314, // Exorcism ranks 1-6
+                    26573, 20116, 20922, 20923, 20924, // Consecration ranks 1-5
+                    24275, 24274, 24239, // Hammer of Wrath ranks 1-3
+                    20473, 20929, 20930, 27174, // Holy Shock ranks 1-4
+                    20925, 20927, 20928, // Holy Shield ranks 1-3
+                    853, 5588, 5589, // Hammer of Justice ranks 1-3
+                    2812, 10318, // Holy Wrath ranks 1-2
+                    1022, 5599 // Hand of Protection ranks 1-2
+                };
+
+                for (uint16 spellId : Paladin_SM_2)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+        }
+
+        else if (player->getClass() == CLASS_PRIEST)
+        {
+            if (spell->GetSpellInfo()->SchoolMask == 2) // Holy
+            {
+                static constexpr std::array<uint16, 82> Priest_SM_2 =
+                {
+                    2061, 9472, 9473, 9474, 10915, 10916, 10917, 25233, // Flash Heal ranks 1-8
+                    139, 6074, 6075, 6076, 6077, 6078, 10927, 10928, 10929, 25315, 25221, // Renew ranks 1-11
+                    17, 592, 600, 3747, 6065, 6066, 10898, 10899, 10900, 10901, 25217, // Power Word: Shield ranks 1-11
+                    14914, 15262, 15263, 15264, 15265, 15266, 15267, 15261,  // Holy Fire ranks 1-8
+                    15237, 15430, 15431, 27799, 27800, 27801, // Holy Nova ranks 1-6
+                    588, 7128, 602, 1006, 10951, 10952, // Inner Fire ranks 1-6
+                    2054, 2055, 6063, 6064, // Heal ranks 1-4
+                    585, 591, 598, 984, 1004, 6060, 10933, 10934, 25363, // Smite ranks 1-9
+                    2060, 10963, 10964, 10965, 25314, 25210, // Greater Heal ranks 1-6
+                    596, 996, 10960, 10961, 25316, // Prayer of Healing ranks 1-5
+                    2050, 2052, 2053, // Lesser Heal ranks 1-3
+                    9484, 9485, // Shackle Undead ranks 1-2
+                    724, 27870, 27871  // Lightwell rank 1-3
+                };
+
+                for (uint16 spellId : Priest_SM_2)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+
+            if (spell->GetSpellInfo()->SchoolMask == 32) // Shadow
+            {
+                static constexpr std::array<uint16, 34> Priest_SM_32 =
+                {
+                    8092, 8102, 8103, 8104, 8105, 8106, 10945, 10946, 10947, 25372, // Mind Blast ranks 1-10
+                    589, 594, 970, 992, 2767, 10892, 10893, 10894, 25367, // Shadow Word: Pain ranks 1-9
+                    15407, 17311, 17312, 17313, 17314, 18807, // Mind Flay ranks 1-6
+                    2944, 19276, 19277, 19278, 19279, 19280, // Devouring Plague ranks 1-6
+                    8122, 8124, 10888 // Psychic Scream ranks 1-3
+                };
+
+                for (uint16 spellId : Priest_SM_32)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+        }
+
+        else if (player->getClass() == CLASS_SHAMAN)
+        {
+            if (spell->GetSpellInfo()->SchoolMask == 4) // Fire
+            {
+                static constexpr std::array<uint16, 35> Shaman_SM_4 =
+                {
+                    1535, 8498, 8499, 11314, 11315, 25546, // Fire Nova ranks 1-6
+                    8050, 8052, 8053, 10447, 10448, 29228, // Flame Shock ranks 1-6
+                    8227, 8249, 10526, 16387, // Flametongue Totem ranks 1-4
+                    8024, 8027, 8030, 16339, 16341, 16342, // Flametongue Weapon ranks 1-6
+                    8181, 10478, 10479, // Frost Resistance Totem ranks 1-3
+                    8190, 10585, 10586, 10587, // Magma Totem ranks 1-4
+                    3599, 6363, 6364, 6365, 10437, 10438 // Searing Totem ranks 1-6
+                };
+
+                for (uint16 spellId : Shaman_SM_4)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+
+            if (spell->GetSpellInfo()->SchoolMask == 8) // Nature
+            {
+                static constexpr std::array<uint16, 65> Shaman_SM_8 =
+                {
+                    1064, 10622, 10623, 25422, // Chain Heal ranks 1-4
+                    421, 930, 2860, 10605, 25439, // Chain Lightning ranks 1-5
+                    8042, 8044, 8045, 8046, 10412, 10413, 10414, // Earth Shock ranks 1-7
+                    331, 332, 547, 913, 939, 959, 8005, 10395, 10396, 25357, 25391, // Healing Wave ranks 1-11
+                    8004, 8008, 8010, 10466, 10467, 10468, // Lesser Healing Wave ranks 1-6
+                    403, 529, 548, 915, 943, 6041, 10391, 10392, 15207, 15208, 25448, // Lightning Bolt ranks 1-11
+                    10595, 10600, 10601, // Nature Resistance Totem ranks 1-3
+                    8017, 8018, 8019, // Rockbiter Weapon ranks 1-3
+                    5730, 6390, 6391, 6392, 10427, 10428, // Stoneclaw Totem ranks 1-6
+                    8075, 8160, 8161, 10442, 25361, // Strength of Earth Totem ranks 1-5
+                    8232, 8235, 10486, 16362 // Windfury Weapon ranks 1-4
+                };
+
+                for (uint16 spellId : Shaman_SM_8)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+
+            if (spell->GetSpellInfo()->SchoolMask == 16) // Frost
+            {
+                static constexpr std::array<uint16, 21> Shaman_SM_16 =
+                {
+                    8184, 10537, 10538, // Fire Resistance Totem ranks 1-3
+                    8056, 8058, 10472, 10473, // Frost Shock ranks 1-4
+                    8033, 8038, 10456, 16355, 16356, // Frostbrand Weapon ranks 1-5
+                    5394, 6375, 6377, 10462, 10463, // Healing Stream Totem ranks 1-5
+                    5675, 10495, 10496, 10497 // Mana Spring Totem ranks 1-4
+                };
+
+                for (uint16 spellId : Shaman_SM_16)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+        }
+
+        else if (player->getClass() == CLASS_WARLOCK)
+        {
+            if (spell->GetSpellInfo()->SchoolMask == 4) // Fire
+            {
+                static constexpr std::array<uint16, 29> Warlock_SM_4 =
+                {
+                    348, 707, 1094, 2941, 11665, 11667, 11668, 25309, // Immolate ranks 1-8
+                    5676, 17919, 17920, 17921, 17922, 17923, 27210, // Searing Pain ranks 1-7
+                    5740, 6219, 11677, 11678, // Rain of Fire ranks 1-4
+                    6366, 17951, 17952, 17953, // Create Firestone ranks 1-4
+                    1949, 11683, 11684, // Hellfire ranks 1-3
+                    6353, 17924, 27211, // Soul Fire ranks 1-3
+                };
+
+                for (uint16 spellId : Warlock_SM_4)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+
+            if (spell->GetSpellInfo()->SchoolMask == 32) // Shadow
+            {
+                static constexpr std::array<uint16, 77> Warlock_SM_32 =
+                {
+                    686, 695, 705, 1088, 1106, 7641, 11659, 11660, 11661, 25307, // Shadow Bolt ranks 1-10
+                    172, 6222, 6223, 7648, 11671, 11672, 25311, // Corruption ranks 1-7
+                    980, 1014, 6217, 11711, 11712, 11713, // Curse of Agony ranks 1-6
+                    702, 1108, 6205, 7646, 11707, 11708, 27224, // Curse of Weakness ranks 1-7
+                    1490, 11721, 11722, // Curse of Elements ranks 1-3
+                    689, 699, 709, 7651, 11699, 11700, 27219, // Drain Life ranks 1-7
+                    1120, 8288, 8289, 11675, // Drain Soul ranks 1-4
+                    17877, 18867, 18868, 18869, 18870, 18871, 27263, // Shadowburn ranks 1-7
+                    6229, 11739, 11740, 28610, // Shadow Ward ranks 1-4
+                    706, 1086, 11733, 11734, 11735, // Demon Armor ranks 1-5
+                    6201, 6202, 5699, 11729, 11730, // Create Healthstone ranks 1-5
+                    2362, 17727, 17728, // Create Spellstone ranks 1-3
+                    6789, 17925, 17926, // Death Coil ranks 1-3
+                    1098, 11725, // Enslave Demon ranks 1-2
+                    1714, // Curse of Tongues rank 1
+                    5484, // Howl of Terror rank 1
+                    710, // Banish rank 1
+                    603 // Curse of Doom rank 1
+                };
+
+                for (uint16 spellId : Warlock_SM_32)
+                {
+                    if (spell->GetSpellInfo()->Id == spellId)
+                    {
+                        ChatHandler(player->GetSession()).PSendSysMessage("This spell is not available during WotLK.");
+                        spell->cancel();
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     bool OnPlayerBeforeTeleport(Player* player, uint32 mapid, float x, float y, float z, float /*orientation*/, uint32 /*options*/, Unit* /*target*/) override
@@ -205,7 +584,7 @@ public:
         if (!player || !player->IsInWorld())
             return false;
 
-        if (!sIndividualProgression->enabled || player->IsGameMaster() || sIndividualProgression->isExcludedFromProgression(player))
+        if (!sIndividualProgression->enabled || player->IsGameMaster() || !sIndividualProgression->isNormalAccount(player))
             return true;
 
         if (mapid == MAP_BLACKWING_LAIR && !sIndividualProgression->hasPassedProgression(player, PROGRESSION_MOLTEN_CORE))
@@ -215,7 +594,7 @@ public:
         }
         if (mapid == MAP_ONYXIAS_LAIR)
         {
-            if (player->GetLevel() <= IP_LEVEL_TBC) // vanilla version
+            if (player->GetLevel() <= 70) // vanilla version
             {
                 if (player->GetLevel() < 50)
                     return false;
@@ -224,15 +603,15 @@ public:
                 if (!player->HasItemCount(ITEM_DRAKEFIRE_AMULET))
                     return false;
             }
-			else // WotLK
+ 			else // WotLK
             {
-                if (player->GetLevel() != IP_LEVEL_WOTLK)
+                if (player->GetLevel() != 80)
                     return false;
             }
         }
         if (mapid == MAP_ZUL_GURUB)
         {
-            uint32 PLAYER_PROGRESSION = player->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
+            uint32 PLAYER_PROGRESSION = sIndividualProgression->GetPlayerProgressionFromQuests(player);
             ProgressionState REQUIRED_ZG_PROGRESSION = static_cast<ProgressionState>(sIndividualProgression->RequiredZulGurubProgression);
 
             if (PLAYER_PROGRESSION < REQUIRED_ZG_PROGRESSION)
@@ -276,13 +655,57 @@ public:
                 return false;
             }
         }
-        if (mapid == MAP_ZUL_AMAN && !sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_3))
+        if (mapid == MAP_ZUL_AMAN)
         {
-            ChatHandler(player->GetSession()).PSendSysMessage("Progression Level Required = |cff00ffff{}|r", PROGRESSION_TBC_TIER_3);
-            return false;
+            uint32 PLAYER_PROGRESSION = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+            ProgressionState REQUIRED_ZA_PROGRESSION = static_cast<ProgressionState>(sIndividualProgression->RequiredZulAmanProgression);
+
+            if (PLAYER_PROGRESSION < REQUIRED_ZA_PROGRESSION)
+            {
+                ChatHandler(player->GetSession()).PSendSysMessage("Progression Level Required = |cff00ffff{}|r", REQUIRED_ZA_PROGRESSION);
+                return false;
+            }
         }
         if (mapid == MAP_NORTHREND && !sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5))
         {
+            const uint16 AREA_COLD_HEARTH_MANOR = 166;
+            const uint16 AREA_DRYGULCH_RAVINE = 370;
+            const uint16 AREA_STORMWIND_GREAT_SEA = 2364;
+            const uint16 AREA_WETLANDS_GREAT_SEA = 2365;
+            const uint16 AREA_STORMWIND_HARBOR = 4411;
+
+            uint16 NPC_DEATHGUARD_BARTH = 31708; // Zeppelin Crewman in Tirisfal Glades
+            uint16 NPC_GRUNT_GRITCH = 31726; // Zeppelin Crewman in Durotar
+            uint16 NPC_SAILOR_JANSEN = 31759;
+            uint16 NPC_SAILOR_DAVIES = 31761;
+            uint16 NPC_SAILOR_PICARDO = 31792;
+
+            switch (player->GetAreaId())
+            {
+            case AREA_STORMWIND_GREAT_SEA:
+                if (player->FindNearestCreature(NPC_SAILOR_PICARDO, 80.0f))
+                    player->TeleportTo(0, -8290.685f, 1395.097f, 4.851f, 0); // Stormwind Harbor
+                break;
+            case AREA_STORMWIND_HARBOR:
+                if (player->FindNearestCreature(NPC_SAILOR_JANSEN, 60.0f) || player->FindNearestCreature(NPC_SAILOR_DAVIES, 40.0f))
+                    player->TeleportTo(0, -8641.461f, 1322.536f, 5.537f, 0); // Stormwind Harbor
+                break;
+            case AREA_WETLANDS_GREAT_SEA:
+                if (player->FindNearestCreature(NPC_SAILOR_JANSEN, 60.0f) || player->FindNearestCreature(NPC_SAILOR_DAVIES, 40.0f))
+                    player->TeleportTo(0, -3730.277f, -584.316f, 4.7365f, 0); // Menethil Harbor
+                break;
+            case AREA_DUROTAR:
+            case AREA_DRYGULCH_RAVINE:
+                if (player->FindNearestCreature(NPC_GRUNT_GRITCH, 40.0f))
+                    player->TeleportTo(1, 1174.13f, -4152.37f, 51.746f, 0); // Durotar Zeppelin Master
+                break;
+            case AREA_TIRISFAL_GLADES:
+            case AREA_COLD_HEARTH_MANOR:
+                if (player->FindNearestCreature(NPC_DEATHGUARD_BARTH, 40.0f))
+                    player->TeleportTo(0, 2060.0942f, 361.5912f, 82.5f, 0); // Tirisfal Glades Zeppelin Master
+                break;
+            }
+
             ChatHandler(player->GetSession()).PSendSysMessage("Progression Level Required = |cff00ffff{}|r", PROGRESSION_TBC_TIER_5);
             return false;
         }
@@ -324,12 +747,12 @@ public:
                 ChatHandler(player->GetSession()).PSendSysMessage("Progression Level Required = |cff00ffff{}|r", PROGRESSION_TBC_TIER_1);
                 return false;
             }
-			else if (!player->HasItemCount(ITEM_TEMPEST_KEY))
+ 			else if (!player->HasItemCount(ITEM_TEMPEST_KEY))
             {
                 ChatHandler(player->GetSession()).PSendSysMessage("You must possess the Tempest Key to enter The Eye.");
                 return false;
             }
-			else if (player->GetQuestStatus(TRIAL_MAGTHERIDON) != QUEST_STATUS_REWARDED)
+ 			else if (player->GetQuestStatus(TRIAL_MAGTHERIDON) != QUEST_STATUS_REWARDED)
             {
                 ChatHandler(player->GetSession()).PSendSysMessage("You must complete the quest Trial of the Naaru: Magtheridon to enter The Eye.");
                 return false;
@@ -342,7 +765,7 @@ public:
                 ChatHandler(player->GetSession()).PSendSysMessage("Progression Level Required = |cff00ffff{}|r", PROGRESSION_TBC_TIER_1);
                 return false;
             }
-			else if (player->GetQuestStatus(CUDGEL_OF_KARDESH) != QUEST_STATUS_REWARDED)
+ 			else if (player->GetQuestStatus(CUDGEL_OF_KARDESH) != QUEST_STATUS_REWARDED)
             {
                 ChatHandler(player->GetSession()).PSendSysMessage("You must complete the quest The Cudgel of Kar\'desh to enter Serpentshrine Reservoir.");
                 return false;
@@ -355,7 +778,7 @@ public:
                 ChatHandler(player->GetSession()).PSendSysMessage("Progression Level Required = |cff00ffff{}|r", PROGRESSION_TBC_TIER_2);
                 return false;
             }
-			else if (player->GetQuestStatus(VIALS_OF_ETERNITY) != QUEST_STATUS_REWARDED)
+ 			else if (player->GetQuestStatus(VIALS_OF_ETERNITY) != QUEST_STATUS_REWARDED)
             {
                 ChatHandler(player->GetSession()).PSendSysMessage("You must complete the quest The Vials of Eternity to enter the Battle of Mount Hyjal.");
                 return false;
@@ -368,7 +791,7 @@ public:
                 ChatHandler(player->GetSession()).PSendSysMessage("Progression Level Required = |cff00ffff{}|r", PROGRESSION_TBC_TIER_2);
                 return false;
             }
-			else if (!player->HasItemCount(ITEM_MEDALLION_OF_KARABOR) && !player->HasItemCount(ITEM_BLESSED_MEDALLION_OF_KARABOR))
+ 			else if (!player->HasItemCount(ITEM_MEDALLION_OF_KARABOR) && !player->HasItemCount(ITEM_BLESSED_MEDALLION_OF_KARABOR))
             {
                 ChatHandler(player->GetSession()).PSendSysMessage("You must possess the Medallion of Karabor to enter the Black Temple.");
                 return false;
@@ -379,24 +802,24 @@ public:
         if (instanceTemplate)
         {
             if (instanceTemplate->Parent == MAP_OUTLAND && !sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC))
-            {
                 return false;
-            }
+
             if (instanceTemplate->Parent == MAP_NORTHREND && mapid != MAP_NAXXRAMAS && !sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5))
-            {
                 return false;
-            }
-            if (instanceTemplate->Parent == MAP_NORTHREND && mapid == MAP_NAXXRAMAS && player->GetLevel() <= IP_LEVEL_TBC && (!isAttuned(player) ||  sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5) ))
-            {
+
+            if (instanceTemplate->Parent == MAP_NORTHREND && mapid == MAP_NAXXRAMAS && player->GetLevel() <= 70 && (!sIndividualProgression->isAttuned(player) ||  sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5) ))
                 return false;
-            }
         }
+
         return true;
     }
 
     void OnPlayerCompleteQuest(Player* player, Quest const* quest) override
     {
-        if (!player || !player->IsInWorld() || !quest || !sIndividualProgression->enabled )
+        if (!player || !player->IsInWorld() || !quest || !sIndividualProgression->enabled)
+            return;
+
+        if (!sIndividualProgression->isNormalAccount(player))
             return;
 
         if (sIndividualProgression->questMoneyAtLevelCap)
@@ -404,14 +827,10 @@ public:
             int32 moneyRew = 0;
             int32 XPValue = 0;
 
-            if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC) && player->GetLevel() == IP_LEVEL_VANILLA)
-            {
-                XPValue = quest->XPValue(quest->GetQuestLevel() == -1 ? IP_LEVEL_VANILLA : quest->GetQuestLevel());
-            }
-            else if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5) && player->GetLevel() == IP_LEVEL_TBC)
-		    {
-                XPValue = quest->XPValue(quest->GetQuestLevel() == -1 ? IP_LEVEL_TBC : quest->GetQuestLevel());
-		    }
+            if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC) && player->GetLevel() == 60)
+                XPValue = quest->XPValue(quest->GetQuestLevel() == -1 ? 60 : quest->GetQuestLevel());
+            else if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5) && player->GetLevel() == 70)
+                XPValue = quest->XPValue(quest->GetQuestLevel() == -1 ? 70 : quest->GetQuestLevel());
 
             moneyRew = (XPValue * (6 * COPPER)) * sWorld->getRate(RATE_REWARD_BONUS_MONEY);
 
@@ -429,49 +848,31 @@ public:
             }
         }
 
-        if (!sIndividualProgression->isExcludedFromProgression(player) || !sIndividualProgression->excludeAccounts)
+        switch (quest->GetQuestId())
         {
-            switch (quest->GetQuestId())
+        case BANG_A_GONG:
+        case SIMPLY_BANG_A_GONG:
+            if (!sIndividualProgression->disableDefaultProgression)
+                 sIndividualProgression->UpdateProgressionState(player, PROGRESSION_PRE_AQ);
+            break;
+        case CHAOS_AND_DESTRUCTION:
+            if (!sIndividualProgression->disableDefaultProgression)
+                 sIndividualProgression->UpdateProgressionState(player, PROGRESSION_AQ_WAR);
+            break;
+        case INTO_THE_BREACH:
+            if (!sIndividualProgression->disableDefaultProgression)
+                 sIndividualProgression->UpdateProgressionState(player, PROGRESSION_PRE_TBC);
+            break;
+        case QUEST_MORROWGRAIN:
+        case QUEST_TROLL_NECKLACE:
+        case QUEST_DEADWOOD:
+        case QUEST_WINTERFALL:
+            if (sIndividualProgression->repeatableVanillaQuestsXp)
             {
-                case BANG_A_GONG:
-                    if (!sIndividualProgression->disableDefaultProgression)
-                    {
-                        sIndividualProgression->UpdateProgressionState(player, PROGRESSION_PRE_AQ);
-                        sIndividualProgression->UpdateProgressionQuests(player);
-                    }
-                    break;
-                case SIMPLY_BANG_A_GONG:
-                    if (!sIndividualProgression->disableDefaultProgression)
-                    {
-                        sIndividualProgression->UpdateProgressionState(player, PROGRESSION_PRE_AQ);
-                        sIndividualProgression->UpdateProgressionQuests(player);
-                    }
-                    break;
-                case CHAOS_AND_DESTRUCTION:
-                    if (!sIndividualProgression->disableDefaultProgression)
-                    {
-                        sIndividualProgression->UpdateProgressionState(player, PROGRESSION_AQ_WAR);
-                        sIndividualProgression->UpdateProgressionQuests(player);
-                    }
-                    break;
-                case INTO_THE_BREACH:
-                    if (!sIndividualProgression->disableDefaultProgression)
-                    {
-                        sIndividualProgression->UpdateProgressionState(player, PROGRESSION_PRE_TBC);
-                        sIndividualProgression->UpdateProgressionQuests(player);
-                    }
-                    break;
-                case QUEST_MORROWGRAIN:
-                case QUEST_TROLL_NECKLACE:
-                case QUEST_DEADWOOD:
-                case QUEST_WINTERFALL:
-                    if (sIndividualProgression->repeatableVanillaQuestsXp)
-                    {
-                        // Reset the quest status so the player can take it and receive rewards again
-                        player->RemoveRewardedQuest(quest->GetQuestId());
-                    }
-                    break;
+                // Reset the quest status so the player can take it and receive rewards again
+                player->RemoveRewardedQuest(quest->GetQuestId());
             }
+            break;
         }
     }
 
@@ -480,22 +881,22 @@ public:
         if (!player || !player->IsInWorld())
             return false;
 
-        if (!sIndividualProgression->enabled)
+        if (!sIndividualProgression->enabled || sIndividualProgression->isBotAccount(player))
             return true;
 
         Player* otherPlayer = ObjectAccessor::FindPlayerByName(membername, false);
-        uint8 currentState = player->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
-        uint8 otherPlayerState = otherPlayer->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
+        uint8 currentState = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+        uint8 otherPlayerState = sIndividualProgression->GetPlayerProgressionFromQuests(otherPlayer);
 
         if (sIndividualProgression->enforceGroupRules) // enforceGroupRules enabled
         {
-            if (!sIndividualProgression->isExcludedFromProgression(player)) // player has a normal account
+            if (sIndividualProgression->isNormalAccount(player))
             {
-                if (sIndividualProgression->isExcludedFromProgression(otherPlayer)) // RNDbot
+                if (sIndividualProgression->isBotAccount(otherPlayer))
                 {
                     if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC)) // player is in vanilla
                     {
-                        if (otherPlayer->GetLevel() <= IP_LEVEL_VANILLA)
+                        if (otherPlayer->GetLevel() <= 60)
                         {
                             return true;
                         }
@@ -507,7 +908,7 @@ public:
                     }
                     else if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5)) // player is in TBC
                     {
-                        if ((otherPlayer->GetLevel() > IP_LEVEL_VANILLA) && (otherPlayer->GetLevel() <= IP_LEVEL_TBC))
+                        if ((otherPlayer->GetLevel() > 60) && (otherPlayer->GetLevel() <= 70))
                         {
                             return true;
                         }
@@ -519,7 +920,7 @@ public:
                     }
                     else // player is in WotLK
                     {
-                        if (otherPlayer->GetLevel() > IP_LEVEL_TBC)
+                        if (otherPlayer->GetLevel() > 70)
                         {
                             return true;
                         }
@@ -535,25 +936,25 @@ public:
                     return (currentState == otherPlayerState);
                 }
             }
-            else // player has an excluded account
+            else // if (sIndividualProgression->isExcludedAccount(player))
             {
-                if (sIndividualProgression->isExcludedFromProgression(otherPlayer)) // RNDbot
+                if (!sIndividualProgression->isNormalAccount(otherPlayer)) // other player is either excluded or a RNDbot
                 {
-                    if (player->GetLevel() <= IP_LEVEL_VANILLA) // player is in vanilla
+                    if (player->GetLevel() <= 60) // player is in vanilla
                     {
-                        if (otherPlayer->GetLevel() <= IP_LEVEL_VANILLA)
+                        if (otherPlayer->GetLevel() <= 60)
                         {
                             return true;
                         }
-                        else
+                        else // excluded accounts in vanilla cannot group with TBC or WotLK accounts when enforceGroupRules is enabled, to avoid bypassing progression requirements
                         {
                             ChatHandler(player->GetSession()).SendSysMessage("|cff00ff00Enforce Group Rules is enabled: |cffccccccthis player's level is too high.|r");
                             return false;
                         }
                     }
-                    else if (player->GetLevel() <= IP_LEVEL_TBC) // player is in TBC
+                    else if (player->GetLevel() <= 70) // player is in TBC
                     {
-                        if ((otherPlayer->GetLevel() > IP_LEVEL_VANILLA) && (otherPlayer->GetLevel() <= IP_LEVEL_TBC))
+                        if ((otherPlayer->GetLevel() > 60) && (otherPlayer->GetLevel() <= 70))
                         {
                             return true;
                         }
@@ -565,7 +966,7 @@ public:
                     }
                     else // player is in WotLK
                     {
-                        if (otherPlayer->GetLevel() > IP_LEVEL_TBC)
+                        if (otherPlayer->GetLevel() > 70)
                         {
                             return true;
                         }
@@ -578,7 +979,7 @@ public:
                 }
                 else // player or ALTbot
                 {
-                    ChatHandler(player->GetSession()).SendSysMessage("|cff00ff00Enforce Group Rules is enabled: |cffccccccthis player does not have an excluded account.|r");
+                    ChatHandler(player->GetSession()).SendSysMessage("|cff00ff00Enforce Group Rules is enabled: |cffccccccthis player is not a bot or does not have an excluded account.|r");
                     return false;
                 }
             }
@@ -595,19 +996,19 @@ public:
             return false;
 
         Player* groupLeader = ObjectAccessor::FindPlayerByLowGUID(group->GetLeaderGUID().GetCounter());
-        uint8 currentState = player->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
-        uint8 groupLeaderState = groupLeader->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
+        uint8 currentState = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+        uint8 groupLeaderState = sIndividualProgression->GetPlayerProgressionFromQuests(groupLeader);
 
         if (!sIndividualProgression->enabled)
             return true;
 
-        if (sIndividualProgression->isExcludedFromProgression(player))
+        if (!sIndividualProgression->isNormalAccount(player)) // player is either a RNDbot or has an excluded account
         {
             if (sIndividualProgression->enforceGroupRules)
             {
-                if (groupLeaderState <= 7) // Group leader is in Vanilla
+                if (groupLeaderState < PROGRESSION_PRE_TBC) // Group leader is in Vanilla
                 {
-                    if (player->GetLevel() <= 60) // invited excluded player is in Vanilla
+                    if (player->GetLevel() <= 60) // invited player is in Vanilla
                     {
                         sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(groupLeaderState));
                         return true;
@@ -615,7 +1016,7 @@ public:
                     else
                         return false;
                 }
-                else if (groupLeaderState > 7 && groupLeaderState < 13) // Group leader is in TBC
+                else if (groupLeaderState >= PROGRESSION_PRE_TBC && groupLeaderState < PROGRESSION_TBC_TIER_5) // Group leader is in TBC
                 {
                     if (player->GetLevel() > 60 && player->GetLevel() <= 70) // invited excluded player is in TBC
                     {
@@ -658,8 +1059,10 @@ public:
         if (!sIndividualProgression->enabled || !killed || !killer || !killer->IsInWorld())
             return;
 
-        switch (killed->GetEntry())
+        if (killer->GetMap()->GetId() == MAP_DEADMINES)
         {
+            switch (killed->GetEntry())
+            {
             case RHAHK_ZOR:
                 killer->RemoveAura(IPP_PHASE);
                 killer->RemoveAura(IPP_PHASE_II);
@@ -670,34 +1073,138 @@ public:
                 killer->RemoveAura(IPP_PHASE);
                 killer->RemoveAura(IPP_PHASE_II);
                 killer->RemoveAura(IPP_PHASE_III);
-	            killer->CastSpell(killer, IPP_PHASE, false);
+                killer->CastSpell(killer, IPP_PHASE, false);
                 killer->CastSpell(killer, IPP_PHASE_II, false);
                 break;
             case GILNID:
                 killer->RemoveAura(IPP_PHASE);
                 killer->RemoveAura(IPP_PHASE_II);
                 killer->RemoveAura(IPP_PHASE_III);
-	            killer->CastSpell(killer, IPP_PHASE, false);
+                killer->CastSpell(killer, IPP_PHASE, false);
                 killer->CastSpell(killer, IPP_PHASE_II, false);
                 killer->CastSpell(killer, IPP_PHASE_III, false);
                 break;
+            }
         }
 
-        if (killed->GetCreatureTemplate()->rank > CREATURE_ELITE_NORMAL)
+        if (killer->GetMap()->GetId() == MAP_ALTERAC_VALLEY)
         {
-            sIndividualProgression->checkKillProgression(killer, killed);
-            Group* group = killer->GetGroup();
-            if (!group)
-                return;
-
-            for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+            static constexpr std::array<uint32, 20> AV_commanders =
             {
-                Player* member = itr->GetSource();
-                if (!member || sIndividualProgression->isExcludedFromProgression(member))
-                    continue;
+                13137, // Lieutenant Rugba
+                13138, // Lieutenant Spencer
+                13139, // Commander Randolph
+                13140, // Commander Dardosh
+                13143, // Lieutenant Stronghoof
+                13144, // Lieutenant Vol'talar
+                13145, // Lieutenant Grummus
+                13146, // Lieutenant Murp
+                13147, // Lieutenant Lewis
+                13152, // Commander Malgor
+                13153, // Commander Mulfort
+                13154, // Commander Louis Philips
+                13296, // Lieutenant Largent
+                13297, // Lieutenant Stouthandle
+                13298, // Lieutenant Greywand
+                13299, // Lieutenant Lonadin
+                13300, // Lieutenant Mancuso
+                13318, // Commander Mortimer
+                13319, // Commander Duffy
+                13320  // Commander Karl Philips
+            };
 
-                if (killer->IsAtLootRewardDistance(member))
-                    sIndividualProgression->checkKillProgression(member, killed);
+            for (uint32 commanderId : AV_commanders)
+            {
+                if (killed->GetEntry() == commanderId)
+                {
+                    TeamId teamId = killer->GetTeamId(true);
+
+                    if (Battleground* bg = killer->GetBattleground())
+                        bg->RewardHonorToTeam(198, teamId);
+                }
+            }
+        }
+
+        Group* group = killer->GetGroup();
+        
+        if (killed->GetCreatureTemplate()->rank > CREATURE_ELITE_NORMAL)
+        {       
+            if (sIndividualProgression->disableDefaultProgression)
+            {
+                bool CustomCreatureKilled = false;
+                
+                if (group)
+                {
+                    for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+                    {
+                        Player* member = itr->GetSource();
+                        if (!member || !sIndividualProgression->isNormalAccount(member))
+                            continue;
+
+                        if (sIndividualProgression->checkCustomKillProgression(killer, killed))
+                            CustomCreatureKilled = true;
+                    }
+                }
+                else // no group
+                {
+                    if (sIndividualProgression->checkCustomKillProgression(killer, killed)) 
+                        CustomCreatureKilled = true;
+                }
+
+                if (CustomCreatureKilled)
+                    return;
+            }
+   
+            if (killed->GetEntry() == COLOSSUS_ZORA || killed->GetEntry() == COLOSSUS_REGAL || killed->GetEntry() == COLOSSUS_ASHI)
+            {
+                // no group
+                if (killed->GetEntry() == COLOSSUS_ZORA)
+                    killer->CompleteQuest(QUEST_COLOSSUS_ZORA);
+                else if (killed->GetEntry() == COLOSSUS_REGAL)
+                    killer->CompleteQuest(QUEST_COLOSSUS_REGAL);
+                else if (killed->GetEntry() == COLOSSUS_ASHI)
+                    killer->CompleteQuest(QUEST_COLOSSUS_ASHI);    
+               
+                if (group)
+                {
+                    for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+                    {
+                        Player* member = itr->GetSource();
+                        if (!member || !sIndividualProgression->isNormalAccount(member))
+                            continue;
+
+                        if (killed->GetEntry() == COLOSSUS_ZORA)
+                            member->CompleteQuest(QUEST_COLOSSUS_ZORA);
+                        else if (killed->GetEntry() == COLOSSUS_REGAL)
+                            member->CompleteQuest(QUEST_COLOSSUS_REGAL);
+                        else if (killed->GetEntry() == COLOSSUS_ASHI)
+                            member->CompleteQuest(QUEST_COLOSSUS_ASHI);
+                    }
+                }
+                return;
+            }
+
+            uint32 ENTRY_KILLED = killed->GetEntry();
+
+            if (group)
+            {
+                for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+                {
+                    Player* member = itr->GetSource();
+                    if (!member || !sIndividualProgression->isNormalAccount(member))
+                        continue;
+
+                    if (killer->IsAtLootRewardDistance(member))
+                    {
+                        if (!sIndividualProgression->hasCustomProgressionValue(ENTRY_KILLED))
+                            sIndividualProgression->checkKillProgression(member, killed);
+                    }
+                }
+            }
+            else // no group
+            {
+                if (!sIndividualProgression->hasCustomProgressionValue(ENTRY_KILLED))
+                    sIndividualProgression->checkKillProgression(killer, killed);
             }
         }
     }
@@ -714,33 +1221,127 @@ public:
         return false;
     }
 
-    void OnPlayerUpdateArea(Player* player, uint32 /*oldArea*/, uint32 newArea) override
+    void OnPlayerMapChanged(Player* player) override
     {
-        if (!player || !player->IsInWorld() || !newArea)
+        if (!sIndividualProgression->enabled || !player || !player->IsInWorld())
+            return;
+
+        if (sIndividualProgression->isNormalAccount(player))
+            sIndividualProgression->checkIPProgression(player);
+
+        if (!sIndividualProgression->isBotAccount(player) || sIndividualProgression->BotAccountsEarnPvPTitles)
+        {
+            sIndividualProgression->AwardEarnedVanillaPvpTitles(player);
+            sIndividualProgression->CleanUpVanillaPvpTitles(player);
+        }
+
+        sIndividualProgression->CheckAdjustments(player);
+    }
+
+    void OnPlayerUpdateZone(Player* player, uint32 /*newZone*/, uint32 newArea) override
+    {
+        if (!sIndividualProgression->enabled || !player || !player->IsInWorld() || !newArea)
+            return;
+
+        sIndividualProgression->checkIPPhasing(player, newArea);
+    }
+
+    void OnPlayerUpdateArea(Player* player, uint32 oldArea, uint32 newArea) override
+    {
+        if (!player || !player->IsInWorld() || !newArea || !oldArea)
+            return;
+
+        if (!sIndividualProgression->enabled || player->IsGameMaster())
+            return;
+
+        if (newArea == oldArea)
             return;
 
         uint32 mapid = player->GetMap()->GetId();
 
         if (mapid && mapid == MAP_OUTLAND) // prevent entering Sun's Reach Harbor in Quel'Danas without proper progression
         {
-            if (!sIndividualProgression->isExcludedFromProgression(player) && !sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_4) && newArea == 4087) // Sun's Reach Harbor
+            if (sIndividualProgression->isNormalAccount(player))
             {
-                ChatHandler(player->GetSession()).PSendSysMessage("Progression Level Required = |cff00ffff{}|r", PROGRESSION_TBC_TIER_4);
+                if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_4) && newArea == 4087) // Sun's Reach Harbor
+                {
+                    ChatHandler(player->GetSession()).PSendSysMessage("Progression Level Required = |cff00ffff{}|r", PROGRESSION_TBC_TIER_4);
 
-                TeamId teamId = player->GetTeamId(true);
-                if (teamId == TEAM_ALLIANCE)
-                    player->TeleportTo(0, 2270.32f, -5341.56f, 87, 1.34946f); // Light's Hope Chapel
-                else // Horde
-                    player->TeleportTo(530, 9373.69f, -7168.46f, 9.17572f, 1.04876f); // Eversong Woods
+                    TeamId teamId = player->GetTeamId(true);
+                    if (teamId == TEAM_ALLIANCE)
+                        player->TeleportTo(0, 2270.32f, -5341.56f, 87, 1.34946f); // Light's Hope Chapel
+                    else // Horde
+                        player->TeleportTo(530, 9373.69f, -7168.46f, 9.17572f, 1.04876f); // Eversong Woods
+                }
             }
         }
 
         sIndividualProgression->checkIPPhasing(player, newArea);
     }
 
+    bool OnPlayerCanEquipItem(Player* player, uint8 /*slot*/, uint16& /*dest*/, Item* pItem, bool /*swap*/, bool /*not_loading*/) override
+    {
+        if (!player || !pItem)
+            return false;
+
+        if (pItem->GetTemplate()->RequiredHonorRank == 0)
+            return true;
+
+        if (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) == 0) // value is 0 player login
+            return true;
+
+        switch (pItem->GetTemplate()->RequiredHonorRank)
+        {
+        case 5:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 5);
+            break;
+        case 6:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 6);
+            break;
+        case 7:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 7);
+            break;
+        case 8:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 8);
+            break;
+        case 9:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 9);
+            break;
+        case 10:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 10);
+            break;
+        case 11:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 11);
+            break;
+        case 12:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 12);
+            break;
+        case 13:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 13);
+            break;
+        case 14:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 14);
+            break;
+        case 15:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 15);
+            break;
+        case 16:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 16);
+            break;
+        case 17:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 17);
+            break;
+        case 18:
+            return (player->GetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_LIFETIME_MAX_PVP_RANK) >= 18);
+            break;
+        default:
+            break;
+        }
+        return true;
+    }
 };
 
-class IndividualPlayerProgression_AccountScript: public AccountScript
+class IndividualPlayerProgression_AccountScript : public AccountScript
 {
 public:
     IndividualPlayerProgression_AccountScript() : AccountScript("IndividualProgression_AccountScript") { }
@@ -756,28 +1357,37 @@ public:
         {
             return true;
         }
+
+        // Check if the account is a bot or excluded from progression
+        std::string accountName;
+        bool accountNameFound = AccountMgr::GetName(accountId, accountName);
+        std::regex botAccountsRegex(sIndividualProgression->botAccountsRegex);
+        std::regex excludedAccountsRegex(sIndividualProgression->excludedAccountsRegex);
+  
+        if (accountNameFound && (std::regex_match(accountName, botAccountsRegex) || std::regex_match(accountName, excludedAccountsRegex)))
+            return true;
+
         uint8 highestProgression = sIndividualProgression->GetAccountProgression(accountId);
-        if (charRace == RACE_DRAENEI || charRace == RACE_BLOODELF)
+        bool allowed = true;
+        
+        if ((charRace == RACE_DRAENEI || charRace == RACE_BLOODELF) && sIndividualProgression->tbcRacesProgressionLevel != 0)
         {
-            if (sIndividualProgression->tbcRacesProgressionLevel)
-            {
-                if (highestProgression < sIndividualProgression->tbcRacesProgressionLevel)
-                    return false;
-            }
+            if (highestProgression < sIndividualProgression->tbcRacesProgressionLevel)
+                allowed = false;
         }
-        if (charClass == CLASS_DEATH_KNIGHT && sIndividualProgression->deathKnightProgressionLevel)
+        if (charClass == CLASS_DEATH_KNIGHT && sIndividualProgression->deathKnightProgressionLevel != 0)
         {
             if (highestProgression < sIndividualProgression->deathKnightProgressionLevel)
-                return false;
+                allowed = false;
         }
-        return true;
+        return allowed;
     }
 };
 
 class IndividualPlayerProgression_GroupScript : public GroupScript
 {
 public:
-    IndividualPlayerProgression_GroupScript() : GroupScript("IndividualPlayerProgression_GroupScript") {}
+    IndividualPlayerProgression_GroupScript() : GroupScript("IndividualPlayerProgression_GroupScript") { }
 
     void OnAddMember(Group* group, ObjectGuid guid) override
     {
@@ -821,6 +1431,12 @@ public:
 
         Player* player = isPet ? healer->GetOwner()->ToPlayer() : healer->ToPlayer();
 
+        if (sIndividualProgression->BotOnlyAdjustments)
+        {
+            if (!sIndividualProgression->isBotAccount(player) && sIndividualProgression->isPlayerInDungeonOrRaid(player))
+                return;
+        }
+
         if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC))
             heal *= sIndividualProgression->ComputeVanillaAdjustment(player->GetLevel(), sIndividualProgression->vanillaHealingAdjustment);
         else if (sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC) && !sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5))
@@ -842,6 +1458,12 @@ public:
 
         Player* player = isPet ? attacker->GetOwner()->ToPlayer() : attacker->ToPlayer();
 
+        if (sIndividualProgression->BotOnlyAdjustments)
+        {
+            if (!sIndividualProgression->isBotAccount(player) && sIndividualProgression->isPlayerInDungeonOrRaid(player))
+                return;
+        }
+
         if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC))
             damage *= sIndividualProgression->ComputeVanillaAdjustment(player->GetLevel(), sIndividualProgression->vanillaPowerAdjustment);
         else if (sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC) && !sIndividualProgression->hasPassedProgression(player, PROGRESSION_TBC_TIER_5))
@@ -858,6 +1480,12 @@ public:
             return;
 
         Player* player = isPet ? attacker->GetOwner()->ToPlayer() : attacker->ToPlayer();
+
+        if (sIndividualProgression->BotOnlyAdjustments)
+        {
+            if (!sIndividualProgression->isBotAccount(player) && sIndividualProgression->isPlayerInDungeonOrRaid(player))
+                return;
+        }
 
         if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC))
             damage *= sIndividualProgression->ComputeVanillaAdjustment(player->GetLevel(), sIndividualProgression->vanillaPowerAdjustment);
@@ -886,6 +1514,12 @@ public:
             return;
 
         Player* player = isPet ? attacker->GetOwner()->ToPlayer() : attacker->ToPlayer();
+
+        if (sIndividualProgression->BotOnlyAdjustments)
+        {
+            if (!sIndividualProgression->isBotAccount(player) && sIndividualProgression->isPlayerInDungeonOrRaid(player))
+                return;
+        }
 
         if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_PRE_TBC))
             damage *= sIndividualProgression->ComputeVanillaAdjustment(player->GetLevel(), sIndividualProgression->vanillaPowerAdjustment);

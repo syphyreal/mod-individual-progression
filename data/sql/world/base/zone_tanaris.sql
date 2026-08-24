@@ -102,7 +102,7 @@ INSERT INTO `gameobject` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, 
 
 UPDATE `gameobject_template` SET `ScriptName` = "go_cavernsoftimedoor" WHERE `entry` = 176996;
 
-UPDATE `creature` SET `position_x` = -8175.67, `position_y` = -4718.28, `position_z` = 26.3489, `orientation` = 1.88496 WHERE `id1` = 15192;
+UPDATE `creature` SET `position_x` = -8175.67, `position_y` = -4718.28, `position_z` = 26.3489, `orientation` = 1.88496 WHERE `id` = 15192;
 
 -- fix Omgorn the Lost waypoints, was placed on wrong continent
 UPDATE `creature` SET `map` = 1 WHERE `guid` IN (152280, 152281);
@@ -113,7 +113,7 @@ UPDATE `creature_loot_template` SET `Chance` = 10 WHERE `Item` = 8428;
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 19 AND `ConditionTypeOrReference` = 8 AND `SourceEntry` IN (5065, 10445);
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, 
 `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES 
-(19, 0, 5065, 0, 0, 8, 0, 66003, 0, 0, 0, 0, 0, '', 'Prospector Ironboot - Hide \'The Lost Tablets of Mosh\'aru\' until the player reaches Pre-AQ'),
+-- (19, 0, 5065, 0, 0, 8, 0, 66003, 0, 0, 0, 0, 0, '', 'Prospector Ironboot - Hide \'The Lost Tablets of Mosh\'aru\' until the player reaches Pre-AQ'),
 (19, 0, 10445, 0, 0, 8, 0, 66009, 0, 0, 0, 0, 0, '', 'Soridormi - Hide \'The Vials of Eternity\' until the player reaches TBC T2');
     
 DELETE FROM `creature_text` WHERE `CreatureID` IN (5465, 5471, 5472, 5473, 5474, 5475);
@@ -144,10 +144,10 @@ SET @Evee      := 125177;
 SET @Ecton     := 125178;
 
 DELETE FROM `creature` WHERE `guid` IN (@CGUID+41, @CGUID+42);
-DELETE FROM `creature` WHERE `id1` IN (25177, 25178, 26378, @Evee, @Ecton);
-DELETE FROM `creature` WHERE `id1` IN (32359, 32360, 32362, 32407, 33915, 33917, 33920, 33924, 33928, 33929, 33934, 33935, 33939, 34088, 34090, 34093);
+DELETE FROM `creature` WHERE `id` IN (25177, 25178, 26378, @Evee, @Ecton);
+DELETE FROM `creature` WHERE `id` IN (32359, 32360, 32362, 32407, 33915, 33917, 33920, 33924, 33928, 33929, 33934, 33935, 33939, 34088, 34090, 34093);
 
-INSERT INTO `creature` (`guid`, `id1`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`) VALUES 
+INSERT INTO `creature` (`guid`, `id`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`) VALUES 
 --
 (@CGUID+41, 20278,   1, -7119.02, -3779.06, 8.78404, 0, 180),     -- Vixton Pinchwhistle, WotLK Season 1
 (@CGUID+42, @Vixton, 1, -7119.02, -3779.06, 8.78404, 0, 180),     -- Vixton Pinchwhistle, WotLK Season 2

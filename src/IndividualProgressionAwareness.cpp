@@ -256,6 +256,38 @@ public:
     }
 };
 
+class npc_ipp_zg : public CreatureScript
+{
+public:
+    npc_ipp_zg() : CreatureScript("npc_ipp_zg") { }
+
+    struct npc_ipp_zgAI: ScriptedAI
+    {
+        explicit npc_ipp_zgAI(Creature* creature) : ScriptedAI(creature) { };
+
+        bool CanBeSeen(Player const* player) override
+        {
+            if (player->IsGameMaster() || !sIndividualProgression->enabled)
+                return true;
+
+            Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
+
+            uint32 PLAYER_PROGRESSION = sIndividualProgression->GetPlayerProgressionFromQuests(target);
+            ProgressionState REQUIRED_ZG_PROGRESSION = static_cast<ProgressionState>(sIndividualProgression->RequiredZulGurubProgression);
+
+            if (PLAYER_PROGRESSION >= REQUIRED_ZG_PROGRESSION)
+                return true;
+            else
+                return false;
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_ipp_zgAI(creature);
+    }
+};
+
 class npc_ipp_we : public CreatureScript
 {
 public:
@@ -443,7 +475,7 @@ public:
                 return true;
 
             Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
-            if (sIndividualProgression->hasPassedProgression(target, PROGRESSION_AQ))
+            if (sIndividualProgression->hasPassedProgression(target, PROGRESSION_AQ) || sIndividualProgression->isExcludedAccount(target))
                 return true;
             else
                 return false;
@@ -512,6 +544,34 @@ public:
     }
 };
 
+class npc_ipp_tbc_pre_t3 : public CreatureScript
+{
+public:
+    npc_ipp_tbc_pre_t3() : CreatureScript("npc_ipp_tbc_pre_t3") { }
+
+    struct npc_ipp_tbc_pre_t3AI: ScriptedAI
+    {
+        explicit npc_ipp_tbc_pre_t3AI(Creature* creature) : ScriptedAI(creature) { };
+
+        bool CanBeSeen(Player const* player) override
+        {
+            if (player->IsGameMaster())
+                return true;
+
+            Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
+            if (!sIndividualProgression->hasPassedProgression(target,PROGRESSION_TBC_TIER_2))
+                return true;
+            else
+                return false;
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_ipp_tbc_pre_t3AI(creature);
+    }
+};
+
 class npc_ipp_tbc_t3 : public CreatureScript
 {
 public:
@@ -540,42 +600,14 @@ public:
     }
 };
 
-class npc_ipp_tbc_pre_t4 : public CreatureScript
+class npc_ipp_za : public CreatureScript
 {
 public:
-    npc_ipp_tbc_pre_t4() : CreatureScript("npc_ipp_tbc_pre_t4") { }
+    npc_ipp_za() : CreatureScript("npc_ipp_za") { }
 
-    struct npc_ipp_tbc_pre_t4AI: ScriptedAI
+    struct npc_ipp_zaAI: ScriptedAI
     {
-        explicit npc_ipp_tbc_pre_t4AI(Creature* creature) : ScriptedAI(creature) { };
-
-        bool CanBeSeen(Player const* player) override
-        {
-            if (player->IsGameMaster())
-                return true;
-
-            Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
-            if (sIndividualProgression->isBeforeProgression(target,PROGRESSION_TBC_TIER_3))
-                return true;
-            else
-                return false;
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_ipp_tbc_pre_t4AI(creature);
-    }
-};
-
-class npc_ipp_tbc_t4 : public CreatureScript
-{
-public:
-    npc_ipp_tbc_t4() : CreatureScript("npc_ipp_tbc_t4") { }
-
-    struct npc_ipp_tbc_t4AI: ScriptedAI
-    {
-        explicit npc_ipp_tbc_t4AI(Creature* creature) : ScriptedAI(creature) { };
+        explicit npc_ipp_zaAI(Creature* creature) : ScriptedAI(creature) { };
 
         bool CanBeSeen(Player const* player) override
         {
@@ -583,7 +615,11 @@ public:
                 return true;
 
             Player* target = ObjectAccessor::FindConnectedPlayer(player->GetGUID());
-            if (sIndividualProgression->hasPassedProgression(target, PROGRESSION_TBC_TIER_3))
+
+            uint32 PLAYER_PROGRESSION = sIndividualProgression->GetPlayerProgressionFromQuests(target);
+            ProgressionState REQUIRED_ZA_PROGRESSION = static_cast<ProgressionState>(sIndividualProgression->RequiredZulAmanProgression);
+
+            if (PLAYER_PROGRESSION >= REQUIRED_ZA_PROGRESSION)
                 return true;
             else
                 return false;
@@ -592,7 +628,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return new npc_ipp_tbc_t4AI(creature);
+        return new npc_ipp_zaAI(creature);
     }
 };
 
@@ -776,6 +812,7 @@ void AddSC_mod_individual_progression_awareness()
     new gobject_ipp_tbc_t4();         // Shattered Sun
     new gobject_ipp_wotlk();
     new npc_ipp_preaq();              // Cenarion Hold NPCs
+    new npc_ipp_zg();
     new npc_ipp_we();                 // War Effort NPCs in cities
     new npc_ipp_aq();
     new npc_ipp_aqwewar();            // only visible during AQ war effort and AQ war
@@ -785,9 +822,9 @@ void AddSC_mod_individual_progression_awareness()
     new npc_ipp_naxx40();
     new npc_ipp_pre_tbc();            // Vanilla pvp vendors
     new npc_ipp_tbc();
-    new npc_ipp_tbc_t3();
-    new npc_ipp_tbc_pre_t4();
-    new npc_ipp_tbc_t4();
+    new npc_ipp_tbc_pre_t3();         // TBC leatherworking vendors
+    new npc_ipp_tbc_t3();             // TBC leatherworking vendors
+    new npc_ipp_za();
     new npc_ipp_pre_wotlk();
     new npc_ipp_wotlk();
     new npc_ipp_wotlk_ulduar();

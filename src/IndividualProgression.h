@@ -21,13 +21,6 @@
 
 typedef std::unordered_map<uint32, uint32> questXpMapType;
 
-enum ProgressionLevelThreshold
-{
-    IP_LEVEL_VANILLA = 60,
-    IP_LEVEL_TBC     = 70,
-    IP_LEVEL_WOTLK   = 80
-};
-
 enum ProgressionBossIDs
 {
     RAGNAROS             = 11502,
@@ -48,7 +41,10 @@ enum ProgressionBossIDs
     HALION               = 39863,
     RHAHK_ZOR            = 644,
     SNEED                = 643,
-    GILNID               = 1763
+    GILNID               = 1763,
+    COLOSSUS_ZORA        = 15740,
+    COLOSSUS_REGAL       = 15741,
+    COLOSSUS_ASHI        = 15742
 };
 
 enum BuffSpells
@@ -61,7 +57,10 @@ enum BuffSpells
     SPELL_CANNIBALISE    = 20578,
     IPP_PHASE            = 89509,
     IPP_PHASE_II         = 89511,
-    IPP_PHASE_III        = 89513
+    IPP_PHASE_III        = 89513,
+    IPP_PHASE_IV         = 89515,
+    IPP_PHASE_V          = 89517,
+    IPP_PHASE_VI         = 89519	
 };
 
 enum ProgressionQuestIDs
@@ -80,7 +79,10 @@ enum ProgressionQuestIDs
     BATTLE_UNDERCITY_HORDE    = 13267,
     BATTLE_UNDERCITY_ALLIANCE = 13377,
     SIMPLY_BANG_A_GONG        = 108743,
-    CHAOS_AND_DESTRUCTION     = 108744
+    CHAOS_AND_DESTRUCTION     = 108744,
+    QUEST_COLOSSUS_ZORA       = 108745,
+    QUEST_COLOSSUS_REGAL      = 108746,
+    QUEST_COLOSSUS_ASHI       = 108747
 };
 
 enum WarEffortQuestIDs
@@ -169,6 +171,7 @@ enum ProgressionAreas
     AREA_MAZTHORIL                       = 2245,
     AREA_ICE_THISTLE_HILLS               = 2247,
     AREA_THE_MARRIS_STEAD                = 2260,
+    AREA_CORINS_CROSSING                 = 2264,
     AREA_LIGHTS_HOPE                     = 2268,
     AREA_FOREST_SONG                     = 2358,
     AREA_DRACO_DAR                       = 2421,
@@ -181,6 +184,7 @@ enum ProgressionAreas
     AREA_HIVE_REGAL                      = 2744,
     AREA_VEILED_SEA                      = 3479,
 	AREA_AMMEN_VALE                      = 3526,
+    AREA_TERRACE_OF_LIGHT                = 3897,
     AREA_ARGENT_SUNREAVER_PAVILION       = 4666,
     AREA_ARGENT_SILVER_COVENANT_PAVILION = 4667,
     AREA_ARGENT_PAVILION                 = 4674
@@ -194,9 +198,30 @@ enum DungeonKeys
     ITEM_BLESSED_MEDALLION_OF_KARABOR    = 32757
 };
 
-enum ProgressionSettings
+enum ShatteredSunOffensive
 {
-    SETTING_PROGRESSION_STATE   = 0
+    FACTION_SHATTERED_SUN                = 1077,
+    AREA_SILVERMOONS_PRIDE               = 4083,
+    AREA_SHATTERED_SUN_STAGING           = 4085,
+    AREA_SUNS_REACH_SANCTUM              = 4086,
+    AREA_SUNS_REACH_HARBOR               = 4087,
+    AREA_SUNS_REACH_ARMORY               = 4088,
+    AREA_DAWNSTAR_VILLAGE                = 4089,
+    AREA_THE_DAWNING_SQUARE              = 4090,
+    AREA_SUNWELL_PLATEAU_B               = 4094,
+    QUEST_SANCTUM_WARDS                  = 11496,
+    QUEST_MANA_CELLS                     = 11513,
+    QUEST_DISCOVERING_ROOTS              = 11520,
+    QUEST_ERRATIC_BEHAVIOR               = 11524,
+    QUEST_MISSING_MAGISTRIX              = 11526,
+    QUEST_DISTRACTION_DEAD_SCAR          = 11532,
+    QUEST_MAKING_READY                   = 11535,
+    QUEST_BATTLE_FOR_ARMORY              = 11538,
+    QUEST_TAKING_THE_HARBOR              = 11539,
+    QUEST_INTERCEPT_REINFORCEMENTS       = 11542,
+    QUEST_ATAMAL_ARMAMENTS               = 11544,
+    QUEST_CHARITABLE_DONATION            = 11545,
+    SONG_OF_VICTORY                      = 46302
 };
 
 enum ProgressionState : uint8         // Progression stands for what has been completed
@@ -212,7 +237,7 @@ enum ProgressionState : uint8         // Progression stands for what has been co
     PROGRESSION_PRE_TBC         = 8,  // Karazhan, Gruul's Lair, Magtheridon's Lair
     PROGRESSION_TBC_TIER_1      = 9,  // Serpentshrine Cavern, Tempest Keep
     PROGRESSION_TBC_TIER_2      = 10, // Hyjal Summit and Black Temple
-    PROGRESSION_TBC_TIER_3      = 11, // Zul'Aman
+//  PROGRESSION_TBC_TIER_3      = 11, // Zul'Aman
     PROGRESSION_TBC_TIER_4      = 12, // Sunwell Plateau
     PROGRESSION_TBC_TIER_5      = 13, // WotLK Naxx, EoE, OS
     PROGRESSION_WOTLK_TIER_1    = 14, // Ulduar
@@ -380,25 +405,35 @@ public:
     std::map<uint32, uint8> customProgressionMap;
     questXpMapType questXpMap;
     float vanillaPowerAdjustment, tbcPowerAdjustment, vanillaHealingAdjustment, tbcHealingAdjustment;
-    bool enabled, questXpFix, enforceGroupRules, fishingFix, simpleConfigOverride, questMoneyAtLevelCap, repeatableVanillaQuestsXp, disableDefaultProgression, earlyDungeonSet2, earlyScourgeBosses, requireNaxxStrath, doableNaxx40Bosses, DisableRDF, excludeAccounts, VanillaPvpTitlesKeepPostVanilla, VanillaPvpTitlesEarnPostVanilla, ExcludedAccountsEarnPvPTitles;
-    int progressionLimit, startingProgression, tbcRacesProgressionLevel, tbcRacesStartingProgression, deathKnightProgressionLevel, deathKnightStartingProgression, RequiredZulGurubProgression, tbcArenaSeason, wotlkArenaSeason, ExcludedAccountsMaxLevel;
+    bool enabled, questXpFix, enforceGroupRules, EnableSetRepCommand, EnableAllSpellRanks, LimitedSetRepCommand, fishingFix, simpleConfigOverride, MaxMonsterSight, questMoneyAtLevelCap, repeatableVanillaQuestsXp, disableDefaultProgression, earlyDungeonSet2, earlyScourgeBosses, requireNaxxStrath, doableNaxx40Bosses_4H, doableNaxx40Bosses_Gluth, doableNaxx40Bosses_Patchwerk, doableNaxx40Bosses_Razuvious, DisableQuestMarkers, DisableRDF, VanillaPvpTitlesKeepPostVanilla, VanillaPvpTitlesEarnPostVanilla, BotAccountsEarnPvPTitles, BotOnlyAdjustments;
+    int progressionLimit, startingProgression, tbcRacesProgressionLevel, tbcRacesStartingProgression, deathKnightProgressionLevel, deathKnightStartingProgression, RequiredZulGurubProgression, RequiredZulAmanProgression, tbcArenaSeason, wotlkArenaSeason, BotAccountsMaxLevel;
     uint32 VanillaPvpKillRank1, VanillaPvpKillRank2, VanillaPvpKillRank3, VanillaPvpKillRank4, VanillaPvpKillRank5, VanillaPvpKillRank6, VanillaPvpKillRank7, VanillaPvpKillRank8, VanillaPvpKillRank9, VanillaPvpKillRank10, VanillaPvpKillRank11, VanillaPvpKillRank12, VanillaPvpKillRank13, VanillaPvpKillRank14;
-    std::string excludedAccountsRegex;
+    std::string excludedAccountsRegex, botAccountsRegex, sharedFactionIdsRegex;
+
+    // progression is derived from rewarded hidden quests (IDs 66000 + progression)
+    uint8 GetPlayerProgressionFromQuests(Player* player) const;
 
     bool hasPassedProgression(Player* player, ProgressionState state) const;
     static bool isBeforeProgression(Player* player, ProgressionState state) ;
     void UpdateProgressionState(Player* player, ProgressionState newState) const;
     static void ForceUpdateProgressionState(Player* player, ProgressionState newState);
+
     void CheckAdjustments(Player* player) const;
     bool hasCustomProgressionValue(uint32 creatureEntry);
-    bool isExcludedFromProgression(Player* player);
+    bool isExcludedAccount(Player* player);
+    bool isBotAccount(Player* player);
+    bool isNormalAccount(Player* player);
     void SyncBotsProgressionToLeader(Group* group);
     bool isAttuned(Player* player);
+    bool isPlayerInDungeonOrRaid(Player* player);
     void checkIPPhasing(Player* player, uint32 newArea);
     void checkIPProgression(Player* player);
-    void UpdateProgressionQuests(Player* player);
     void UpdateProgressionAchievements(Player* player, uint16 achievementID);
+    void UpdateGroupAttunement(Player* player, std::string location);
+    void UpdateRNDbotSpells(Player* player);
     void checkKillProgression(Player* player, Creature* killed);
+    bool checkCustomKillProgression(Player* killer, Creature* killed);
+	void UpdateAccountReputation(uint32 factionId, uint32 accountId, Player* player);
     void CleanUpVanillaPvpTitles(Player* player);
     void AwardEarnedVanillaPvpTitles(Player* player);
     static void LoadCustomProgressionEntries(const std::string& customProgressionString);
